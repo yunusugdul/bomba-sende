@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b19">
+<meta name="description" content="Bomba Sende! Rikoşetli bomba, karşı hamle, ışınlanma ve kaos dolu 2 kişilik parti oyunu.">
+<title>BOMBA SENDE! REMIX — Oyunu hemen oyna</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="noise"></div>
+<header class="site-head wrap">
+  <a class="logo" href="#" id="logoHome" aria-label="Bomba Sende ana menü"><span class="logo-icon">💣</span><span>BOMBA<span>SENDE!</span><small>ONLINE</small></span></a>
+  <div class="head-right"><span class="status-dot"></span><span>REMIX • V3.0</span><button class="head-audio" id="muteTop" title="Sesi aç/kapat" aria-label="Sesi aç/kapat">🔊</button></div>
+</header>
+<main>
+<section id="landing" class="landing wrap">
+  <div class="hero">
+    <div class="eyebrow"><span>✳</span> ESKİ KURALLARI UNUT <span>✳</span></div>
+    <h1>BOMBA<br><em>SENDE<span>!</span></em></h1>
+    <div class="remix-ribbon">YENİ NESİL BOMBA DÜELLOSU <span>↗</span></div>
+    <p class="hero-text">Artık sadece <s>kovalamaca</s> yok. <b>Bombayı fırlat, duvardan sektir, son anda karşıla.</b> Hız ve doğru zamanlama kazandırıyor.</p>
+    <div class="feature-list">
+      <div class="feature"><span class="feature-icon pink">➚</span><div><b>RİKOŞET ATIŞLARI</b><small>Tut, nişan al, bırak. Duvarları kullan.</small></div></div>
+      <div class="feature"><span class="feature-icon purple">⛨</span><div><b>SON SANİYE KARŞILAMASI</b><small>Doğru anda savun, bombayı geri yolla.</small></div></div>
+      <div class="feature"><span class="feature-icon lime">✦</span><div><b>KAOS + SÜRPRİZ KARTLAR</b><small>Daralan alan, meteorlar, buz ve portallar.</small></div></div>
+    </div>
+    <div class="home-how"><h2>🎮 NASIL OYNANIR?</h2><p>Bombayı taşıyan oyuncu <b>atış tuşunu basılı tutup</b> şarj eder ve bırakınca fırlatır. Rakibin bombasını tam zamanında <b>SAVUN</b> ile geri yolla. 5 turun sonunda en çok puanı alan kazanır.</p><h3>KLAVYE KONTROLLERİ</h3><div class="home-keys"><span><kbd>W A S D</kbd> Hareket</span><span><kbd>SPACE</kbd> Fırlat</span><span><kbd>SHIFT</kbd> Atıl</span><span><kbd>E</kbd> Savun</span><span><kbd>Q</kbd> Kart</span></div><p class="subtle">Fareyle nişan alabilirsin. Online oynarken de aynı tuşları kullanırsın.</p></div>
+  <div class="lower-chips"><span>⚡ 5 TUR</span><span>🎯 BECERİ ODAKLI</span><span>🆓 TAMAMEN ÜCRETSİZ</span></div>
+  </div>
+  <div class="right-column">
+    <div class="preview" aria-hidden="true"><div class="preview-meta"><b>OYUNA GÖZ AT</b><span>ARENA 01 / NEON PARK</span></div><div class="preview-field"><span class="pglow"></span><div class="field-wall fw-a"></div><div class="field-wall fw-b"></div><div class="field-orb orb-a">😈</div><div class="preview-shot"><span class="shot-ball">💣</span></div><div class="field-orb orb-b">👾</div><span class="preview-flash">✷</span></div><div class="preview-caption"><span>RİKOŞET + DASH + PARRY</span><span class="signal">● READY</span></div></div>
+    <div class="play-card"><div class="card-top"><div><small>MAÇ AYARLARI</small><h2>ARENA'YA GİR.</h2></div><span class="big-sticker">⚡</span></div>
+      <label class="form-label" for="nick">OYUNCU ADI</label><input id="nick" maxlength="14" value="KAOS KRALI" spellcheck="false" autocomplete="off">
+      <div class="form-label mode-label">OYUN MODU</div><div class="mode-grid"><button class="mode-btn selected" data-mode="bot" aria-pressed="true"><b>🤖 TEK OYUNCU</b><small>Yapay zekâya karşı</small></button><button class="mode-btn" data-mode="online" aria-pressed="false"><b>🌐 ONLINE DÜELLO</b>
+<small>Oda koduyla arkadaşına karşı</small></button></div>
+      <div class="online-room hidden" id="onlineRoom">
+  <div class="room-intro"><b>🌐 ARKADAŞINI DAVET ET</b><small>Farklı bilgisayarlardan aynı arenada kapışın.</small></div>
+  <div class="room-actions"><button id="createRoom" class="room-primary">＋ ODA KUR</button><span>VEYA</span><div class="join-fields"><input id="joinCode" maxlength="6" placeholder="ODA KODU" aria-label="Oda kodu" autocomplete="off"><button id="joinRoom">KATIL →</button></div></div>
+  <p class="room-message" id="roomMessage" role="status">Oda kurulunca kodu veya bağlantıyı arkadaşına gönder.</p>
+  <div class="room-ready hidden" id="roomReady"><div class="room-code-head"><span>ODA KODU</span><strong id="roomCode">——</strong></div><div class="invite-row"><input id="roomLink" aria-label="Davet bağlantısı" readonly><button id="copyInvite">KOPYALA</button></div><div id="roomPlayers" class="room-players"></div><button id="hostStart" class="room-primary hidden" disabled>İKİNCİ OYUNCU BEKLENİYOR…</button><button id="leaveRoom" class="room-leave">← ODADAN AYRIL</button></div>
+ </div>
+ <div class="diff-row" id="difficultyRow"><span>ZORLUK</span><div class="diff-buttons"><button data-diff="easy">RAHAT</button><button class="selected" data-diff="normal">DENGELİ</button><button data-diff="hard">ÇILGIN</button></div></div>
+      <button id="startBtn" class="start-btn"><span>💣</span><span>OYUNU BAŞLAT</span><span>↗</span></button><div class="play-foot"><span>✓ Kurulum yok</span><span>✓ Bot modunda internetsiz</span><span>✓ Online odalar ücretsiz</span></div>
+    </div>
+  </div>
+  <div class="section-tail"><span class="tail-line"></span><span>HER ATIŞ BİR HİKÂYE</span><span class="tail-line"></span></div>
+</section>
+<section id="gameScreen" class="game-screen wrap hidden" aria-label="Oyun ekranı">
+  <div class="game-nav"><button id="backBtn" class="nav-button">← MENÜ</button><div class="game-identity"><span>REMIX ARENA</span><b id="mapName">NEON PARK</b></div><div class="nav-actions"><button class="nav-button" id="helpBtn">ⓘ BİLGİ</button><button class="nav-button" id="fullscreenBtn" title="Tam ekran">⛶ TAM EKRAN</button><button id="pauseBtn" class="nav-button">Ⅱ DURAKLAT</button></div></div>
+  <div class="scoreline"><div id="scoreBox0" class="scorebox p0"><div class="profile-emoji">😈</div><div class="profile-name"><b id="player0Name">SEN</b><span id="player0Status">HAZIR</span></div><strong id="score0">0</strong></div><div class="timerbox"><div class="timer-meta"><span id="roundLabel">TUR 1 / 5</span><span id="fuseLabel">FİTİL</span></div><div class="timer-main"><span class="timer-icon" id="timerIcon">💣</span><span id="timerDigits">18.0</span><small>SN</small></div></div><div id="scoreBox1" class="scorebox p1"><strong id="score1">0</strong><div class="profile-name"><b id="player1Name">RAKİP</b><span id="player1Status">HAZIR</span></div><div class="profile-emoji">👾</div></div></div>
+  <div class="fuse-container" title="Bombanın kalan süresi"><div class="fuse-track"><div id="timerFill" class="fuse-burning"></div><span id="fuseSpark" class="fuse-spark" aria-hidden="true">🔥</span></div></div>
+ <div class="arena-shell"><canvas id="arena" width="1000" height="562" aria-label="Oyun alanı: hareket, bomba fırlatma ve savunma"></canvas><div class="arena-overlay hidden" id="overlay" role="dialog" aria-live="polite"><div class="overlay-window"><span id="overlayEyebrow" class="overlay-eyebrow">TUR BAŞLIYOR</span><div id="overlayIcon" class="overlay-icon">💣</div><h2 id="overlayTitle">HAZIR MISIN?</h2><p id="overlayDesc">Fırlatmak için tuşa basılı tut ve bırak.</p><div id="overlayFoot" class="overlay-foot"></div></div></div><div class="event-callout hidden" id="eventCallout">⚡ TURBO MOD</div><div class="floating-toast" id="toast" aria-live="polite"></div>
+    <div class="touch-controls" id="touchControls"><div id="joystick" class="joystick"><div id="joystickStick" class="joystick-stick"></div></div><div class="touch-buttons"><button id="touchSkill" class="touch-button skill">✦<small>KART</small></button><button id="touchParry" class="touch-button parry">⛨<small>SAVUN</small></button><button id="touchDash" class="touch-button dash">➚<small>ATIL</small></button><button id="touchThrow" class="touch-button throw">💣<small>FIRLAT</small></button></div></div>
+  </div>
+  <div class="bottom-hud"><div class="combat-state"><div id="bombStatus" class="bomb-status">💣 BOMBA SENDE</div><span id="tipText">Space'e basılı tut: şarj et. Bırak: fırlat.</span></div><div class="ability-bars"><div class="ability"><div class="ability-key" id="keyThrow">SPACE</div><div><b>FIRLAT</b><div class="meter"><span id="throwMeter"></span></div></div></div><div class="ability"><div class="ability-key" id="keyDash">SHIFT</div><div><b>ATIL</b><div class="meter"><span id="dashMeter"></span></div></div></div><div class="ability"><div class="ability-key" id="keyParry">E</div><div><b>SAVUN</b><div class="meter"><span id="parryMeter"></span></div></div></div><div class="ability special"><div class="ability-key" id="keyPower">Q</div><div><b id="cardName">KART YOK</b><div class="meter"><span id="cardMeter"></span></div></div></div></div></div>
+  <div class="game-bottom"><div class="instruction" id="controlsHint"><b>WASD</b> hareket · <b>SPACE</b> şarj/fırlat · <b>SHIFT</b> atıl · <b>E</b> savun · <b>Q</b> kart</div><div class="game-mode-pill" id="modePill">🤖 YAPAY ZEKÂ</div></div>
+</section>
+</main>
+<div id="infoDialog" class="info-dialog hidden" role="dialog" aria-modal="true" aria-label="Oynanış ve kontroller" aria-hidden="true"><div class="info-card"><div class="info-top"><strong>ⓘ OYUN REHBERİ</strong><button id="infoClose" aria-label="Kapat">✕</button></div><h2>BOMBA SENDE!</h2><p>5 tur boyunca bombayı rakibe fırlat. Süre bittiğinde bombayı taşıyan oyuncu turu kaybeder.</p><div class="info-steps"><p><b>💣 ŞARJ + ATIŞ</b> Space'e basılı tut, nişan al ve bırak. Bomba duvardan seker!</p><p><b>⛨ KARŞILAMA</b> E'ye tam isabet öncesi bas, bombayı geri savur.</p><p><b>➚ HIZLI ATILMA</b> Shift ile tuzaktan sıyrıl.</p><p><b>✦ KARTLAR</b> Kart topla, Q ile ışınlan / dondur / kalkan kullan.</p></div><div class="info-keys"><span><kbd>W A S D</kbd> Hareket</span><span><kbd>SPACE</kbd> Fırlat</span><span><kbd>SHIFT</kbd> Atıl</span><span><kbd>E</kbd> Savun</span><span><kbd>Q</kbd> Kart</span></div><small>İpucu: Online maçlarda rehberi açmak oyun süresini durdurmaz.</small><button id="infoDone" class="room-primary">OYUNA DÖN →</button></div></div>
+<footer class="footer wrap"><span>© 2026 BOMBA SENDE! REMIX</span><span>BU OYUNDA DOSTLUKLAR SINANIR. <b>💣</b></span></footer>
+<script src="/game.js" defer></script>
+</body></html>
