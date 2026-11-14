@@ -1,6 +1,6 @@
 
 'use strict';
-// BOMBA SENDE! REMIX 2.0 — offline, no dependencies. Fixed logical arena: 1000 x 562.
+// BOMBA SENDE! V4.0 — offline, no dependencies. Fixed logical arena: 1000 x 562.
 (() => {
 const W=1000,H=562,R=21, TAU=Math.PI*2;
 const $=id=>document.getElementById(id);
@@ -19,7 +19,21 @@ const MAPS=[
 const CARDS={blink:{name:'IŞINLAN',emoji:'🌀',color:'#ab92ff'},frost:{name:'DONDUR',emoji:'❄️',color:'#75e8ff'},shield:{name:'KALKAN',emoji:'🛡️',color:'#e0f27e'}};
 const CHAOS={shrink:{name:'⛔ ALAN DARALIYOR!',color:'#ff7dbb'},turbo:{name:'⚡ TURBO ZAMANI!',color:'#e2ff60'},meteors:{name:'☄️ METEOR YAĞMURU!',color:'#ffb677'}};
 let options={mode:'bot',difficulty:'normal',nickname:'KAOS KRALI'};
-const net={ws:null,role:null,slot:null,code:null,token:null,players:[],connected:false,closing:false,freeze:false,prevPhase:null,lastState:0,lastInput:0,remote:{x:0,y:0,aimX:0,aimY:0,aimActive:false},retry:null};
+const net={ws:null,role:null,slot:null,code:null,token:null,players:[],connected:false,closing:false,freeze:false,prevPhase:null,lastState:0,lastInput:0,remote:{x:0,y:0,aimX:0,aimY:0,aimActive:false},retry:null,snapshots:[],seq:0};
+const VIEW_DELAY=95,MAX_EXTRAPOLATE=38;
+function remotePresentation(now){
+ const frames=net.snapshots;if(!frames.length)return null;
+ const target=now-VIEW_DELAY;let a=frames[0],b=frames[frames.length-1];
+ for(let i=1;i<frames.length;i++)if(frames[i].t>=target){a=frames[i-1];b=frames[i];break;}
+ const blend=b.t>a.t?clamp((target-a.t)/(b.t-a.t),0,1):0;
+ const newest=frames[frames.length-1];
+ const extrapolate=target>newest.t?Math.min(MAX_EXTRAPOLATE,target-newest.t)/1000:0;
+ const players=b.state.players.map((p,i)=>{const prev=a.state.players[i]||p,jump=Math.hypot(p.x-prev.x,p.y-prev.y)>135;return{x:jump?p.x:lerp(prev.x,p.x,blend),y:jump?p.y:lerp(prev.y,p.y,blend)}});
+ const prevBomb=a.state.bomb,curBomb=b.state.bomb,same=prevBomb.mode===curBomb.mode&&prevBomb.owner===curBomb.owner;
+ const bomb={x:same?lerp(prevBomb.x,curBomb.x,blend):curBomb.x,y:same?lerp(prevBomb.y,curBomb.y,blend):curBomb.y};
+ if(extrapolate){for(let i=0;i<2;i++){const p=newest.state.players[i];players[i].x=clamp(players[i].x+p.vx*extrapolate,R+22,W-R-22);players[i].y=clamp(players[i].y+p.vy*extrapolate,R+22,H-R-22)}if(curBomb.mode==='flying'){bomb.x+=curBomb.vx*extrapolate;bomb.y+=curBomb.vy*extrapolate;}}
+ return{players,bomb};
+}
 
 let game=null, animLast=0, lastHud=0, keys=Object.create(null), muted=false,audio=null;
 let mouse={x:760,y:280,active:false};
@@ -30,7 +44,7 @@ function alertToast(s,seconds=1.4){const el=$('toast');el.textContent=s;el.class
 function flashCallout(s,seconds=2){const el=$('eventCallout');el.textContent=s;el.classList.remove('hidden');calloutTimer=seconds}
 function burst(x,y,color,count=14,speed=160){for(let i=0;i<count;i++){const ang=rand(0,TAU),v=rand(speed*.25,speed);particles.push({x,y,vx:Math.cos(ang)*v,vy:Math.sin(ang)*v,size:rand(2,6),t:rand(.3,.85),max:.85,col:color})}if(particles.length>500)particles.splice(0,particles.length-500)}
 function ring(x,y,color,max=105,seconds=.48){rings.push({x,y,color,r:0,max,t:seconds,life:seconds})}
-function createPlayer(id,name){return {id,name,x:id?850:150,y:281,vx:0,vy:0,face:{x:id?-1:1,y:0},r:R,color:id?'#ff81c4':'#d8ff52',dashCD:0,dashTime:0,parryCD:0,parryTime:0,shieldTime:0,shieldUsed:false,stun:0,portalCD:0,card:null,charge:0,charging:false,speed:0,blinkTrail:[],aiThink:0,aiDecision:null}}
+function createPlayer(id,name){return {id,name,x:id?850:150,y:281,vx:0,vy:0,face:{x:id?-1:1,y:0},aim:{x:id?-1:1,y:0},r:R,color:id?'#ff81c4':'#d8ff52',dashCD:0,dashTime:0,parryCD:0,parryTime:0,shieldTime:0,shieldUsed:false,stun:0,portalCD:0,card:null,charge:0,charging:false,speed:0,blinkTrail:[],aiThink:0,aiDecision:null}}
 function newGame(){particles=[];rings=[];shakes=0;keys=Object.create(null);touch.dx=touch.dy=0;
  game={phase:'ready',round:0,score:[0,0],players:[createPlayer(0,options.nickname),createPlayer(1,options.mode==='bot'?'BOT PATLATÖR':options.mode==='online'?(net.players[1]?.name||'RAKİP'):'OYUNCU 2')],holder:0,bomb:{mode:'held',owner:0,x:150,y:281,vx:0,vy:0,life:0,bounces:0,trail:[],charge:0},map:MAPS[0],fuse:18,initialFuse:18,phaseTime:0,lock:0,card:null,cardDelay:3.1,chaos:null,chaosStarted:false,chaosTimer:0,meteorTimer:0,meteors:[],closingR:470,elapsed:0,roundLoser:null,pausedFrom:null,beepMark:99,slowTime:0,stats:{throws:[0,0],hits:[0,0],parries:[0,0],dashes:[0,0]}};
  $('landing').classList.add('hidden');$('gameScreen').classList.remove('hidden');document.body.classList.add('is-playing');
@@ -43,7 +57,7 @@ function newGame(){particles=[];rings=[];shakes=0;keys=Object.create(null);touch
  if(options.mode==='online'){startRound();game.phase='countdown';game.phaseTime=3.15;hideOverlay();updateHUD();return;}
  startRound();showOverlay('MAÇ BAŞLIYOR','🎯','YENİ KURALLAR, YENİ KAOS','Atış tuşuna basılı tut, nişan al ve bırak. Gelen bombayı savunmayla geri sektir!', [{label:'HAZIRIM, BAŞLAT →',action:()=>{snd('ready');game.phase='countdown';game.phaseTime=3.2;hideOverlay()}}]);updateHUD()}
 function startRound(){const g=game;g.round++;g.map=MAPS[(g.round-1)%MAPS.length];g.holder=Math.floor(Math.random()*2);g.phase='countdown';g.phaseTime=3.15;g.initialFuse=rand(19,23.4);g.fuse=g.initialFuse;g.beepMark=99;g.elapsed=0;g.lock=.55;g.bomb={mode:'held',owner:g.holder,x:g.players[g.holder].x,y:g.players[g.holder].y-27,vx:0,vy:0,life:0,bounces:0,trail:[],charge:0};g.card=null;g.cardDelay=3.6;g.chaos=null;g.chaosStarted=false;g.chaosTimer=0;g.meteorTimer=0;g.meteors=[];g.closingR=470;g.roundLoser=null;g.slowTime=0;
- g.players.forEach((p,i)=>{p.x=i?850:150;p.y=281;p.vx=p.vy=p.speed=0;p.face={x:i?-1:1,y:0};p.charging=false;p.charge=0;p.dashCD=0;p.dashTime=0;p.parryCD=0;p.parryTime=0;p.shieldTime=0;p.shieldUsed=false;p.stun=0;p.portalCD=0;p.card=null;p.aiThink=0;p.aiDecision=null});$('mapName').textContent=g.map.name;hideOverlay()}
+ g.players.forEach((p,i)=>{p.x=i?850:150;p.y=281;p.vx=p.vy=p.speed=0;p.face={x:i?-1:1,y:0};p.aim={x:i?-1:1,y:0};p.charging=false;p.charge=0;p.dashCD=0;p.dashTime=0;p.parryCD=0;p.parryTime=0;p.shieldTime=0;p.shieldUsed=false;p.stun=0;p.portalCD=0;p.card=null;p.aiThink=0;p.aiDecision=null});$('mapName').textContent=g.map.name;hideOverlay()}
 function showOverlay(eyebrow,icon,title,description,actions=[]){$('overlayEyebrow').textContent=eyebrow;$('overlayIcon').textContent=icon;$('overlayTitle').textContent=title;$('overlayDesc').textContent=description;const div=$('overlayFoot');div.replaceChildren();for(const a of actions){const b=document.createElement('button');b.textContent=a.label;if(a.secondary)b.classList.add('secondary-btn');b.addEventListener('click',()=>{snd('click');a.action()});div.appendChild(b)}$('overlay').classList.remove('hidden')}
 function hideOverlay(){$('overlay').classList.add('hidden')}
 function returnMenu(){if(options.mode==='online')leaveOnline();game=null;keys=Object.create(null);document.body.classList.remove('is-playing');$('gameScreen').classList.add('hidden');$('landing').classList.remove('hidden');hideOverlay();$('eventCallout').classList.add('hidden');} 
@@ -98,7 +112,7 @@ function updateBomb(dt){const g=game,b=g.bomb;if(b.mode==='held'){const p=g.play
 }
 function circleRectResolve(p,b){const nx=clamp(p.x,b.x,b.x+b.w),ny=clamp(p.y,b.y,b.y+b.h);let dx=p.x-nx,dy=p.y-ny;let d=Math.hypot(dx,dy);if(d<p.r){if(d<.001){const left=Math.abs(p.x-b.x),right=Math.abs(p.x-(b.x+b.w)),top=Math.abs(p.y-b.y),bottom=Math.abs(p.y-(b.y+b.h));const min=Math.min(left,right,top,bottom);if(min===left)p.x=b.x-p.r;else if(min===right)p.x=b.x+b.w+p.r;else if(min===top)p.y=b.y-p.r;else p.y=b.y+b.h+p.r;p.vx=p.vy=0;return}const normal={x:dx/d,y:dy/d};p.x+=normal.x*(p.r-d+0.2);p.y+=normal.y*(p.r-d+0.2);const dot=p.vx*normal.x+p.vy*normal.y;if(dot<0){p.vx-=dot*normal.x;p.vy-=dot*normal.y}}}
 function updatePlayer(p,dt){p.dashCD=Math.max(0,p.dashCD-dt);p.parryCD=Math.max(0,p.parryCD-dt);p.dashTime=Math.max(0,p.dashTime-dt);p.parryTime=Math.max(0,p.parryTime-dt);p.shieldTime=Math.max(0,p.shieldTime-dt);p.stun=Math.max(0,p.stun-dt);p.portalCD=Math.max(0,p.portalCD-dt);
- const i=movementInput(p);if(Math.hypot(i.x,i.y)>.12)p.face={x:i.x,y:i.y};let speed=275;
+ const i=movementInput(p);if(Math.hypot(i.x,i.y)>.12)p.face={x:i.x,y:i.y};p.aim=aimOf(p);let speed=275;
  if(game.chaos==='turbo')speed*=1.4;
  let icy=game.map.features.some(f=>f.kind==='ice'&&Math.hypot(p.x-f.x,p.y-f.y)<f.r);
  if(game.chaos==='shrink'&&Math.hypot(p.x-500,p.y-281)>game.closingR) speed*=.55;
@@ -160,17 +174,25 @@ function drawPlayer(p){const t=globalTime,carrying=game.holder===p.id;const glow
  ctx.restore()}
 function drawBomb(){const g=game,b=g.bomb;if(b.mode!=='held'){for(let i=0;i<b.trail.length;i++){const tr=b.trail[i];ctx.globalAlpha=clamp(tr.t/.32,0,1)*.55;ctx.fillStyle='#ffe385';ctx.beginPath();ctx.arc(tr.x,tr.y,4+i/Math.max(1,b.trail.length)*9,0,TAU);ctx.fill()}ctx.globalAlpha=1}
  ctx.save();ctx.translate(b.x,b.y);const scale=b.mode==='held'?.83:1.1;ctx.scale(scale,scale);ctx.shadowColor='#ffcc72';ctx.shadowBlur=27;ctx.fillStyle='#10151e';ctx.lineWidth=4;ctx.strokeStyle='#ffcc72';ctx.beginPath();ctx.arc(0,2,15,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.strokeStyle='#f8ecc4';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(5,-12);ctx.quadraticCurveTo(14,-23,9,-27);ctx.stroke();ctx.fillStyle='#ffdc74';ctx.beginPath();ctx.arc(10+Math.sin(globalTime*20)*3,-29,4.5+Math.sin(globalTime*13)*1.5,0,TAU);ctx.fill();ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(-6,-4,4,0,TAU);ctx.fill();ctx.restore();if(b.mode==='flying'){ctx.save();ctx.strokeStyle='#ffdf977a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(b.x-b.vx*.046,b.y-b.vy*.046);ctx.lineTo(b.x-b.vx*.014,b.y-b.vy*.014);ctx.stroke();ctx.restore()}}
-function drawChargeGuide(){const g=game;if(g.phase!=='active'||g.bomb.mode!=='held')return;const p=g.players[g.holder];if(!p.charging||p.id===1&&options.mode==='bot')return;const v=aimOf(p),charge=clamp(p.charge/.85,0,1),length=lerp(80,260,charge);ctx.save();ctx.strokeStyle=charge>.8?'#ff95d6a6':'#d8ff52a6';ctx.lineWidth=3;ctx.setLineDash([9,8]);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+v.x*length,p.y+v.y*length);ctx.stroke();ctx.setLineDash([]);ctx.translate(p.x+v.x*length,p.y+v.y*length);ctx.rotate(Math.atan2(v.y,v.x));ctx.beginPath();ctx.moveTo(-9,-8);ctx.lineTo(0,0);ctx.lineTo(-9,8);ctx.stroke();ctx.restore()}
+function drawChargeGuide(){const g=game;if(g.phase!=='active'||g.bomb.mode!=='held')return;const p=g.players[g.holder];if(!p.charging||p.id===1&&options.mode==='bot')return;const v=p.aim||p.face,charge=clamp(p.charge/.85,0,1),length=lerp(80,260,charge);ctx.save();ctx.strokeStyle=charge>.8?'#ff95d6a6':'#d8ff52a6';ctx.lineWidth=3;ctx.setLineDash([9,8]);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+v.x*length,p.y+v.y*length);ctx.stroke();ctx.setLineDash([]);ctx.translate(p.x+v.x*length,p.y+v.y*length);ctx.rotate(Math.atan2(v.y,v.x));ctx.beginPath();ctx.moveTo(-9,-8);ctx.lineTo(0,0);ctx.lineTo(-9,8);ctx.stroke();ctx.restore()}
 function drawVFX(){for(const e of rings){ctx.save();ctx.globalAlpha=e.t/e.life;ctx.strokeStyle=e.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,TAU);ctx.stroke();ctx.restore()}for(const p of particles){ctx.save();ctx.globalAlpha=clamp(p.t/p.max,0,1);ctx.fillStyle=p.col;ctx.translate(p.x,p.y);ctx.rotate((p.x+p.y)*.04);ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size);ctx.restore()}}
-function drawArena(){ctx.save();if(shakes>0)ctx.translate(rand(-shakes,shakes),rand(-shakes,shakes));drawGrid();drawFeatures();drawCard();drawChargeGuide();game.players.forEach(drawPlayer);drawBomb();drawVFX();if(game.phase==='countdown'){ctx.fillStyle='#080a1db6';ctx.fillRect(0,0,W,H);text('DÜELLO BAŞLIYOR',500,192,17,'#d8ff52',900);text(String(Math.max(1,Math.ceil(game.phaseTime))),500,279,105,'#ffffff',1000);text('BOMBAYI ŞARJ ET • FIRLAT • KURTUL',500,364,16,'#c0b5d7',800)}if(game.phase==='active'&&game.fuse<3){ctx.save();ctx.globalAlpha=(3-game.fuse)/3*.23*(.4+.6*Math.sin(globalTime*14)**2);ctx.fillStyle='#ff487d';ctx.fillRect(0,0,W,H);ctx.restore()}ctx.restore()}
+function drawArena(){ctx.save();if(shakes>0&&options.mode!=='online')ctx.translate(rand(-shakes,shakes),rand(-shakes,shakes));drawGrid();drawFeatures();drawCard();drawChargeGuide();game.players.forEach(drawPlayer);drawBomb();drawVFX();if(game.phase==='countdown'){ctx.fillStyle='#080a1db6';ctx.fillRect(0,0,W,H);text('DÜELLO BAŞLIYOR',500,192,17,'#d8ff52',900);text(String(Math.max(1,Math.ceil(game.phaseTime))),500,279,105,'#ffffff',1000);text('BOMBAYI ŞARJ ET • FIRLAT • KURTUL',500,364,16,'#c0b5d7',800)}if(game.phase==='active'&&game.fuse<3){ctx.save();ctx.globalAlpha=(3-game.fuse)/3*.23*(.4+.6*Math.sin(globalTime*14)**2);ctx.fillStyle='#ff487d';ctx.fillRect(0,0,W,H);ctx.restore()}ctx.restore()}
 function updateHUD(){if(!game)return;const g=game,self=options.mode==='online'&&net.slot===1?1:0,p=g.players[self],b=g.bomb;for(let i=0;i<2;i++){$('score'+i).textContent=g.score[i];$('player'+i+'Status').textContent=g.holder===i?'💣 SICAK PATATES!':g.players[i].stun>0?'❄️ DONDU':'HAZIR';$('scoreBox'+i).style.boxShadow=g.holder===i?'inset 0 0 34px #ffd36c20':'none'}
  $('roundLabel').textContent='TUR '+g.round+' / 5';$('timerDigits').textContent=g.fuse.toFixed(1);$('timerFill').style.width=clamp(g.fuse/g.initialFuse*100,0,100)+'%';$('timerIcon').textContent=g.fuse<5?'🔥':'💣';$('fuseSpark').style.left='calc('+clamp(g.fuse/g.initialFuse*100,0,100)+'% - 1px)';document.querySelector('.fuse-container').classList.toggle('danger',g.fuse<5);
  const hold=g.holder===self;const status=$('bombStatus');status.textContent=hold?'💣 BOMBA SENDE!':b.mode==='flying'?'🚀 BOMBA HAVADA!':'✓ BOMBA RAKİPTE';status.style.color=hold?'#ffcc72':'#d8ff52';$('tipText').textContent=hold?'Atış tuşuna basılı tut, bırakınca bombayı fırlat.':'Atıl ve savun; bombayı havada geri gönderebilirsin.';
  $('throwMeter').style.width=(hold?clamp(p.charge/.85*100,0,100):0)+'%';$('dashMeter').style.width=clamp((1-p.dashCD/3.15)*100,0,100)+'%';$('parryMeter').style.width=clamp((1-p.parryCD/3.5)*100,0,100)+'%';$('cardName').textContent=p.card?CARDS[p.card].name:'KART YOK';$('cardMeter').style.width=p.card?'100%':'0%';}
 function frame(time){const dt=Math.min(.034,Math.max(0,(time-animLast)/1000||.016));animLast=time;
- if(options.mode==='online'&&net.role==='guest'){globalTime+=dt;if(game&&net.connected&&time-net.lastInput>45){sendGuestInput();net.lastInput=time;}}
- else{tick(dt);if(options.mode==='online'&&net.role==='host'&&net.connected&&game&&time-net.lastState>75){netSend({type:'state',state:game});net.lastState=time;}}
- if(game){drawArena();if(time-lastHud>65){updateHUD();lastHud=time}}requestAnimationFrame(frame)}
+ if(options.mode==='online'&&net.role==='guest'){
+  globalTime+=dt;if(game&&net.connected&&time-net.lastInput>30){sendGuestInput();net.lastInput=time;}
+ }else{tick(dt);if(options.mode==='online'&&net.role==='host'&&net.connected&&game&&time-net.lastState>32){netSend({type:'state',seq:++net.seq,state:game});net.lastState=time;}}
+ if(game){
+  if(options.mode==='online'&&net.role==='guest'&&net.snapshots.length){
+   const view=remotePresentation(time),orig=game.players.map(p=>({x:p.x,y:p.y})),bomb={x:game.bomb.x,y:game.bomb.y};
+   if(view){game.players.forEach((p,i)=>{p.x=view.players[i].x;p.y=view.players[i].y});game.bomb.x=view.bomb.x;game.bomb.y=view.bomb.y}
+   drawArena();game.players.forEach((p,i)=>{p.x=orig[i].x;p.y=orig[i].y});game.bomb.x=bomb.x;game.bomb.y=bomb.y;
+  }else drawArena();
+  if(time-lastHud>65){updateHUD();lastHud=time}
+ }requestAnimationFrame(frame)}
 function isTyping(el){return el&&['INPUT','TEXTAREA','SELECT'].includes(el.tagName)}
 function pressControl(code,down){if(!game||game.phase==='finished'||game.phase==='paused'||game.phase==='help')return;
  if(options.mode==='online'){
@@ -196,7 +218,7 @@ function bindTouch(){const joy=$('joystick'),stick=$('joystickStick');function j
 function netSend(data){if(net.ws?.readyState===WebSocket.OPEN)try{net.ws.send(JSON.stringify(data));}catch{}}
 function roomMessage(str,error=false){const el=$('roomMessage');el.textContent=str;el.classList.toggle('error',error);}
 function canOnline(){if(location.protocol!=='http:'&&location.protocol!=='https:'){roomMessage('Online oda için oyunu yayımlanmış site adresinden açmalısın. Bilgisayarda bot modu çalışır.',true);return false;}return true;}
-function joinFromInput(){if(!canOnline())return;const code=$('joinCode').value.toUpperCase().replace(/[^A-Z2-9]/g,'');if(code.length!==6){roomMessage('Lütfen 6 karakterli oda kodunu gir.',true);return;}options.nickname=$('nick').value.trim().slice(0,14)||'KAOS KRALI';connectRoom({type:'join',name:options.nickname,code,token:sessionStorage.getItem('bomba-room-'+code)||undefined});}
+function joinFromInput(){if(!canOnline())return;const code=$('joinCode').value.toUpperCase().replace(/[^A-Z2-9]/g,'');if(code.length!==6){roomMessage('Lütfen 6 karakterli oda kodunu gir.',true);return;}options.nickname=$('nick').value.trim().slice(0,14)||'KAOS KRALI';try{localStorage.setItem('bomba-nickname',options.nickname)}catch{}connectRoom({type:'join',name:options.nickname,code,token:sessionStorage.getItem('bomba-room-'+code)||undefined});}
 function connectRoom(request){
  if(net.retry){clearTimeout(net.retry);net.retry=null;}
  net.closing=false; if(net.ws){net.ws.onclose=null;net.ws.close();}
@@ -213,7 +235,7 @@ function connectRoom(request){
    if(net.code){net.retry=setTimeout(()=>connectRoom({type:'join',code:net.code,token:net.token,name:options.nickname}),2000);}else{roomMessage('Sunucuya erişilemedi. Yeniden denemek için oda kur/katıl düğmesine bas.',true);}
  };
 }
-function leaveOnline(){net.closing=true;if(net.retry){clearTimeout(net.retry);net.retry=null;}netSend({type:'leave'});if(net.ws){net.ws.onclose=null;net.ws.close();net.ws=null;}if(net.code)try{sessionStorage.removeItem('bomba-room-'+net.code)}catch{}net.role=null;net.slot=null;net.code=null;net.token=null;net.players=[];net.connected=false;net.freeze=false;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};$('roomReady').classList.add('hidden');history.replaceState(null,'',location.pathname);}
+function leaveOnline(){net.closing=true;if(net.retry){clearTimeout(net.retry);net.retry=null;}netSend({type:'leave'});if(net.ws){net.ws.onclose=null;net.ws.close();net.ws=null;}if(net.code)try{sessionStorage.removeItem('bomba-room-'+net.code)}catch{}net.role=null;net.slot=null;net.code=null;net.token=null;net.players=[];net.connected=false;net.freeze=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};$('roomReady').classList.add('hidden');history.replaceState(null,'',location.pathname);}
 function updateRoomPanel(){
  if(!net.code)return;
  $('roomReady').classList.remove('hidden');$('roomCode').textContent=net.code;
@@ -242,7 +264,7 @@ function onNetMessage(d){
  }
  if(d.type==='start'){
   if(options.mode!=='online')return;
-  net.freeze=false;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};newGame();roomMessage('Maç başladı!');return;
+  net.freeze=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};newGame();roomMessage('Maç başladı!');return;
  }
  if(d.type==='input'&&net.role==='host'){
   net.remote={x:d.x||0,y:d.y||0,aimX:d.aimX||0,aimY:d.aimY||0,aimActive:!!d.aimActive};return;
@@ -253,7 +275,10 @@ function onNetMessage(d){
  }
  if(d.type==='state'&&net.role==='guest'){
   if(!d.state?.players||!d.state?.map)return;
+  if(Number.isFinite(d.seq)&&d.seq<=net.seq)return;
+  if(Number.isFinite(d.seq))net.seq=d.seq;
   if(!game)newGame();
+  net.snapshots.push({t:performance.now(),state:d.state});if(net.snapshots.length>8)net.snapshots.shift();
   const oldPhase=game.phase,oldRound=game.round,oldChaos=game.chaos;
   game=d.state;
   if(oldRound!==game.round){$('mapName').textContent=game.map.name;hideOverlay();}
@@ -292,7 +317,7 @@ function init(){
  document.querySelectorAll('.mode-btn').forEach(el=>el.addEventListener('click',()=>{options.mode=el.dataset.mode;document.querySelectorAll('.mode-btn').forEach(b=>{b.classList.toggle('selected',b===el);b.setAttribute('aria-pressed',b===el?'true':'false')});$('difficultyRow').classList.toggle('hidden',options.mode!=='bot');$('onlineRoom').classList.toggle('hidden',options.mode!=='online');$('startBtn').classList.toggle('hidden',options.mode==='online');snd('click')}));
  document.querySelectorAll('.diff-buttons button').forEach(el=>el.addEventListener('click',()=>{options.difficulty=el.dataset.diff;document.querySelectorAll('.diff-buttons button').forEach(b=>b.classList.toggle('selected',b===el));snd('click')}));
  $('startBtn').addEventListener('click',()=>{options.nickname=$('nick').value.trim().slice(0,14)||'KAOS KRALI';newGame();snd('click')});
- $('createRoom').addEventListener('click',()=>{if(!canOnline())return;options.nickname=$('nick').value.trim().slice(0,14)||'KAOS KRALI';connectRoom({type:'create',name:options.nickname})});
+ $('createRoom').addEventListener('click',()=>{if(!canOnline())return;options.nickname=$('nick').value.trim().slice(0,14)||'KAOS KRALI';try{localStorage.setItem('bomba-nickname',options.nickname)}catch{}connectRoom({type:'create',name:options.nickname})});
  $('joinRoom').addEventListener('click',()=>joinFromInput());$('joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')joinFromInput()});
  $('copyInvite').addEventListener('click',async()=>{const url=$('roomLink').value;try{await navigator.clipboard.writeText(url);roomMessage('Davet bağlantısı kopyalandı! ✓')}catch{const el=$('roomLink');el.select();document.execCommand('copy');roomMessage('Bağlantı seçildi; Ctrl+C ile kopyala.')}});
  $('hostStart').addEventListener('click',()=>{if(net.role==='host'&&net.players.length===2&&net.players[1].online)netSend({type:'start'})});
@@ -303,11 +328,15 @@ function init(){
  $('fullscreenBtn').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{alertToast('Tam ekran tarayıcın tarafından engellendi.')}layoutArena();});
  $('muteTop').addEventListener('click',()=>{muted=!muted;$('muteTop').textContent=muted?'🔇':'🔊'});
  window.addEventListener('resize',layoutArena);document.addEventListener('fullscreenchange',()=>setTimeout(layoutArena,80));bindTouch();
- const code=new URLSearchParams(location.search).get('room');if(code){document.querySelector('[data-mode="online"]').click();$('joinCode').value=code.toUpperCase().slice(0,6);const tok=sessionStorage.getItem('bomba-room-'+code.toUpperCase());if(tok&&canOnline()){options.nickname=$('nick').value.trim().slice(0,14)||'KAOS KRALI';connectRoom({type:'join',code:code.toUpperCase(),token:tok,name:options.nickname});}else roomMessage('Davet bağlantısı hazır. İsmini yazıp KATIL düğmesine bas.');}
+ const invite=new URLSearchParams(location.search).get('room');
+ if(invite){const code=invite.toUpperCase().replace(/[^A-Z2-9]/g,'').slice(0,6);document.querySelector('[data-mode="online"]').click();$('joinCode').value=code;
+  if(code.length===6&&canOnline()){let tok;try{tok=sessionStorage.getItem('bomba-room-'+code)||undefined}catch{}let nickname;try{nickname=localStorage.getItem('bomba-nickname')}catch{}if(!nickname)nickname='MİSAFİR '+Math.floor(100+Math.random()*900);options.nickname=nickname.slice(0,14);$('nick').value=options.nickname;roomMessage('Davet bağlantısından odaya otomatik katılınıyor…');connectRoom({type:'join',code,token:tok,name:options.nickname});}
+  else roomMessage('Davet bağlantısındaki oda kodu geçersiz.',true);
+ }
  requestAnimationFrame(frame);
 }
 
 init();
 // Public test hook with minimal read-only surface (used only by automated smoke tests).
-window.__BOMBA_REMIX__={getState:()=>game?{phase:game.phase,round:game.round,score:game.score.slice(),holder:game.holder,bombMode:game.bomb.mode,map:game.map.name,chaos:game.chaos}:null,actions:{start:()=>{$('startBtn').click()},begin:()=>{if(game&&game.phase==='ready'){$('overlayFoot button')?.click()}},throw:()=>{beginCharge(0);if(game){game.players[0].charge=.7;endCharge(0)}},dash:()=>useDash(0),parry:()=>useParry(0),card:()=>useCard(0)}};
+window.__BOMBA_SENDE__={getState:()=>game?{phase:game.phase,round:game.round,score:game.score.slice(),holder:game.holder,bombMode:game.bomb.mode,map:game.map.name,chaos:game.chaos}:null,actions:{start:()=>{$('startBtn').click()},begin:()=>{if(game&&game.phase==='ready'){$('overlayFoot button')?.click()}},throw:()=>{beginCharge(0);if(game){game.players[0].charge=.7;endCharge(0)}},dash:()=>useDash(0),parry:()=>useParry(0),card:()=>useCard(0)}};
 })();
