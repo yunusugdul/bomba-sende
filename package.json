@@ -1,0 +1,9 @@
+{
+  "name": "bomba-sende-remix-online",
+  "version": "3.0.0",
+  "private": true,
+  "description": "2 kişilik online bomba düellosu — Node.js WebSocket odaları",
+  "engines": {"node": ">=22"},
+  "scripts": {"start": "node server.js", "test": "node --test test/*.test.js"},
+  "license": "MIT"
+}
