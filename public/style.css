@@ -78,7 +78,8 @@ kbd{color:var(--lime);font:900 10px ui-monospace,monospace}
  body.is-playing .game-screen .touch-controls .touch-buttons{right:26px;bottom:12px}
  body.is-playing .bottom-hud .ability-bars{display:none}
 }
-/* V3.1: compact action bar tiles, preserving adaptive viewport sizing. */
+
+/* V3.1: reduce HUD tile height and retain adaptive one-screen arena layout. */
 body.is-playing .bottom-hud{min-height:0;gap:8px}
 body.is-playing .combat-state{padding:6px 10px;min-height:40px}
 body.is-playing .ability{padding:5px 7px;min-height:40px;gap:6px}
