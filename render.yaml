@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: bomba-sende-remix
+    name: bomba-sende
     runtime: node
     plan: free
     buildCommand: npm install --omit=dev
