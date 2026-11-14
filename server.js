@@ -1,4 +1,4 @@
-// BOMBA SENDE! REMIX online room relay. Node 22+, dependency-free.
+// BOMBA SENDE! online room relay. Node 22+, dependency-free.
 // The host simulates the shared game and transmits state; guests send only controls.
 // Intended for casual friend matches on a single Render instance.
 'use strict';
@@ -65,7 +65,8 @@ function onMessage(ws,raw){
   if(d.type==='state'){
     if(ws.slot!==0||!room.started||typeof d.state!=='object'||d.state===null||Array.isArray(d.state))return;
     const state=d.state;if(!Array.isArray(state.players)||state.players.length!==2||!Array.isArray(state.score))return;
-    send(room.members[1]?.ws,{type:'state',state});return;
+    const now=Date.now();if(room.lastSnapshotAt&&now-room.lastSnapshotAt<20)return;room.lastSnapshotAt=now;
+    send(room.members[1]?.ws,{type:'state',seq:Number.isFinite(d.seq)?d.seq:0,state});return;
   }
   if(d.type==='input'&&ws.slot===1&&room.started){
     const num=n=>Number.isFinite(n)?Math.max(-1,Math.min(1,n)):0;
