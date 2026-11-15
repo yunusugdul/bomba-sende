@@ -1,8 +1,8 @@
 {
   "name": "bomba-sende-online",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "private": true,
-  "description": "Online 2 kişilik bomba düellosu: özelleştirilebilir maç modları ve Bomba Evrimi",
+  "description": "Bomba Sende V6: online oda sohbeti, kar bölgeleri, geliştirme taslağı ve mola bildirimleri",
   "engines": {
     "node": ">=22"
   },
