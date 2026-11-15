@@ -16,10 +16,12 @@ const MAX_FRAME = 64 * 1024;
 const ROOM_TTL_MS = 2 * 60 * 1000;
 function newCode() { let id; do { id=Array.from(crypto.randomBytes(6),v=>CHARS[v%CHARS.length]).join(''); } while(rooms.has(id)); return id; }
 function token() { return crypto.randomBytes(24).toString('hex'); }
+const PRESETS={fusion:{upgrades:true,chaos:true,cards:true,panic:true},evolution:{upgrades:true,chaos:false,cards:true,panic:true},party:{upgrades:false,chaos:true,cards:true,panic:true},classic:{upgrades:false,chaos:false,cards:false,panic:false}};
+function validateRules(input){const v=input&&typeof input==='object'&&!Array.isArray(input)?input:{};const preset=Object.hasOwn(PRESETS,v.preset)?v.preset:'fusion';return {preset,arena:['cycle','random','0','1','2','3','4'].includes(String(v.arena))?String(v.arena):'cycle',rounds:[3,5,7].includes(Number(v.rounds))?Number(v.rounds):5,...Object.fromEntries(['upgrades','chaos','cards','panic'].map(k=>[k,typeof v[k]==='boolean'?v[k]:PRESETS[preset][k]]))};}
 function safeName(raw){ return String(raw||'OYUNCU').replace(/[\x00-\x1f\x7f<>]/g,'').trim().slice(0,14)||'OYUNCU'; }
 function send(ws, data){ if(ws && !ws.closed) try { ws.send(JSON.stringify(data)); }catch{} }
 function roster(room){ return room.members.map((m,i)=>({slot:i,name:m.name,online:!!m.ws&&!m.ws.closed})); }
-function presence(room){ const p={type:'presence',code:room.code,players:roster(room),started:room.started}; room.members.forEach(m=>send(m.ws,p)); }
+function presence(room){ const p={type:'presence',code:room.code,players:roster(room),started:room.started,rules:room.rules}; room.members.forEach(m=>send(m.ws,p)); }
 function cleanup(){ const now=Date.now(); for(const [id,room] of rooms) if(now-room.updated>ROOM_TTL_MS && room.members.every(m=>!m.ws||m.ws.closed)) rooms.delete(id); }
 function reject(ws,message){ send(ws,{type:'error',message}); }
 function leave(ws,explicit=false){
@@ -36,7 +38,7 @@ function join(ws,room,slot,reconnected=false){
   const m=room.members[slot];
   if(m.ws && m.ws!==ws){send(m.ws,{type:'replaced'});m.ws.room=null;m.ws.slot=null;m.ws.close();}
   m.ws=ws;ws.room=room;ws.slot=slot;room.updated=Date.now();
-  send(ws,{type:'joined',code:room.code,slot,token:m.token,players:roster(room),started:room.started,reconnected});
+  send(ws,{type:'joined',code:room.code,slot,token:m.token,players:roster(room),started:room.started,rules:room.rules,reconnected});
   presence(room);
 }
 function onMessage(ws,raw){
@@ -44,7 +46,7 @@ function onMessage(ws,raw){
   if(!d || typeof d!=='object'||typeof d.type!=='string')return;
   if(d.type==='create'){
     if(ws.room)leave(ws,true);
-    const code=newCode();const room={code,members:[{name:safeName(d.name),token:token(),ws:null}],started:false,updated:Date.now()};rooms.set(code,room);join(ws,room,0);return;
+    const code=newCode();const room={code,members:[{name:safeName(d.name),token:token(),ws:null}],rules:validateRules(d.rules),started:false,updated:Date.now()};rooms.set(code,room);join(ws,room,0);return;
   }
   if(d.type==='join'){
     const code=String(d.code||'').trim().toUpperCase().replace(/[^A-Z2-9]/g,''); const room=rooms.get(code);
@@ -73,6 +75,7 @@ function onMessage(ws,raw){
     const aim=n=>Number.isFinite(n)?Math.max(-1000,Math.min(1000,n)):0;
     send(room.members[0].ws,{type:'input',x:num(d.x),y:num(d.y),aimX:aim(d.aimX),aimY:aim(d.aimY),aimActive:!!d.aimActive});return;
   }
+  if(d.type==='upgrade'&&ws.slot===1&&room.started){if(typeof d.choice==='string'&&['rocket','magnet','bank','dash','parry'].includes(d.choice))send(room.members[0].ws,{type:'upgrade',choice:d.choice});return;}
   if(d.type==='act'&&ws.slot===1&&room.started){
     if(!['charge_on','charge_off','dash','parry','card'].includes(d.action))return;
     send(room.members[0].ws,{type:'act',action:d.action});return;

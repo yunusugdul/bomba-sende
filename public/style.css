@@ -86,3 +86,13 @@ body.is-playing .ability{padding:5px 7px;min-height:40px;gap:6px}
 body.is-playing .ability-key{min-height:26px;min-width:39px;font-size:9px}
 body.is-playing .ability b{font-size:10px}
 @media(max-width:850px){body.is-playing .ability{min-height:36px;padding:3px 5px}body.is-playing .ability-key{min-height:24px;min-width:31px;font-size:8px}}
+
+/* V5: compact match customization editor, visible before creating a room. */
+.rules-editor{margin:17px 0 12px;padding:16px;border:1px solid #66547c;border-radius:12px;background:linear-gradient(125deg,#241c38,#151429);display:grid;gap:11px}
+.rules-heading{display:grid;gap:5px}.rules-heading b{color:var(--lime);font-size:12px;letter-spacing:1px}.rules-heading small{font-size:11px;line-height:1.4;color:#ada2c6}
+.rules-editor>label,.rules-columns label{font-size:10px;font-weight:900;color:#c5b7de;letter-spacing:1px;display:grid;gap:7px}
+.rules-editor select{appearance:auto;width:100%;min-width:0;border:1px solid #6f598b;border-radius:7px;background:#100f25;color:#f5edff;padding:10px 9px;font-weight:800;font-size:11px}
+.rules-columns{display:grid;grid-template-columns:1.1fr .9fr;gap:10px}.rules-toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rules-toggles label{display:flex;align-items:flex-start;gap:7px;border:1px solid #524463;background:#1b1830;border-radius:7px;padding:9px 7px;cursor:pointer;font-weight:800;font-size:11px}.rules-toggles input{accent-color:var(--lime);width:16px;height:16px;flex:0 0 auto;margin:0}.rules-toggles small{display:block;margin-top:3px;font-weight:400;font-size:9px;color:#b9aecb;line-height:1.35}.rules-summary{margin:0;color:var(--lime);font-size:10px;font-weight:800}.rules-editor :disabled{opacity:.65;cursor:not-allowed}
+body.is-playing .overlay-window{max-height:min(90dvh,560px);overflow-y:auto}
+body.is-playing .overlay-foot{display:flex;flex-wrap:wrap;gap:7px}body.is-playing .overlay-foot button{max-width:100%;white-space:normal;line-height:1.35}
+@media(max-width:480px){.rules-editor{padding:12px}.rules-toggles{grid-template-columns:1fr}}

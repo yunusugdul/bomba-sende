@@ -29,3 +29,18 @@ test('room code cannot be reused to hijack slot', async()=>{
  const attacker=await openClient();const rej=waitMessage(attacker,d=>d.type==='error');send(attacker,{type:'join',code:c.code,name:'B'});assert.match((await rej).message,/dolu/);
  send(a,{type:'leave'});
 });
+test('custom room rules are validated, shared and remain fixed',async()=>{
+ const h=await openClient();const joined=waitMessage(h,d=>d.type==='joined');
+ send(h,{type:'create',name:'AYARCI',rules:{preset:'evolution',arena:'2',rounds:7,chaos:false,upgrades:true,cards:false,panic:true}});
+ const a=await joined;assert.equal(a.rules.arena,'2');assert.equal(a.rules.rounds,7);assert.equal(a.rules.cards,false);assert.equal(a.rules.upgrades,true);
+ const g=await openClient();const gJoin=waitMessage(g,d=>d.type==='joined');send(g,{type:'join',code:a.code,name:'OYUNCU'});
+ const b=await gJoin;assert.deepEqual(b.rules,a.rules);
+ const started=waitMessage(g,d=>d.type==='start');send(h,{type:'start'});await started;
+ const received=waitMessage(h,d=>d.type==='upgrade');send(g,{type:'upgrade',choice:'magnet'});assert.equal((await received).choice,'magnet');
+ send(h,{type:'leave'});
+});
+test('invalid room rules fallback to supported defaults',async()=>{
+ const h=await openClient();const joined=waitMessage(h,d=>d.type==='joined');send(h,{type:'create',rules:{preset:'unknown',arena:'evil',rounds:999,upgrades:'false'}});const a=await joined;
+ assert.equal(a.rules.preset,'fusion');assert.equal(a.rules.arena,'cycle');assert.equal(a.rules.rounds,5);assert.equal(a.rules.upgrades,true);
+ send(h,{type:'leave'});
+});

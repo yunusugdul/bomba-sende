@@ -12,7 +12,7 @@
 <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="noise"></div>
 <header class="site-head wrap">
   <a class="logo" href="#" id="logoHome" aria-label="Bomba Sende ana menü"><span class="logo-icon">💣</span><span>BOMBA<span>SENDE!</span><small>ONLINE</small></span></a>
-  <div class="head-right"><span class="status-dot"></span><span>ONLINE DÜELLO • V4</span><button class="head-audio" id="muteTop" title="Sesi aç/kapat" aria-label="Sesi aç/kapat">🔊</button></div>
+  <div class="head-right"><span class="status-dot"></span><span>ONLINE DÜELLO • V5</span><button class="head-audio" id="muteTop" title="Sesi aç/kapat" aria-label="Sesi aç/kapat">🔊</button></div>
 </header>
 <main>
 <section id="landing" class="landing wrap">
@@ -26,7 +26,7 @@
       <div class="feature"><span class="feature-icon purple">⛨</span><div><b>SON SANİYE KARŞILAMASI</b><small>Doğru anda savun, bombayı geri yolla.</small></div></div>
       <div class="feature"><span class="feature-icon lime">✦</span><div><b>KAOS + SÜRPRİZ KARTLAR</b><small>Daralan alan, meteorlar, buz ve portallar.</small></div></div>
     </div>
-    <div class="home-how"><h2>🎮 NASIL OYNANIR?</h2><p>Bombayı taşıyan oyuncu <b>atış tuşunu basılı tutup</b> şarj eder ve bırakınca fırlatır. Rakibin bombasını tam zamanında <b>SAVUN</b> ile geri yolla. 5 turun sonunda en çok puanı alan kazanır.</p><h3>KLAVYE KONTROLLERİ</h3><div class="home-keys"><span><kbd>W A S D</kbd> Hareket</span><span><kbd>SOL TIK</kbd> Basılı tut / bırak: fırlat</span><span><kbd>SPACE</kbd> Atıl</span><span><kbd>E</kbd> Savun</span><span><kbd>Q</kbd> Kart</span></div><p class="subtle">Fare ile nişan al. Sol fare tuşuna basılı tutarak bombayı şarj et; bırakarak fırlat. Online oynarken de aynı kontroller geçerlidir.</p></div>
+    <div class="home-how"><h2>🎮 NASIL OYNANIR?</h2><p>Bombayı taşıyan oyuncu <b>atış tuşunu basılı tutup</b> şarj eder ve bırakınca fırlatır. Rakibin bombasını tam zamanında <b>SAVUN</b> ile geri yolla. Seçtiğin tur sayısının sonunda en çok puanı alan kazanır. Bomba Evrimi etkinse tur kaybeden oyuncu yeni bir güç seçer.</p><h3>KLAVYE KONTROLLERİ</h3><div class="home-keys"><span><kbd>W A S D</kbd> Hareket</span><span><kbd>SOL TIK</kbd> Basılı tut / bırak: fırlat</span><span><kbd>SPACE</kbd> Atıl</span><span><kbd>E</kbd> Savun</span><span><kbd>Q</kbd> Kart</span></div><p class="subtle">Fare ile nişan al. Sol fare tuşuna basılı tutarak bombayı şarj et; bırakarak fırlat. Online oynarken de aynı kontroller geçerlidir.</p></div>
   <div class="lower-chips"><span>⚡ 5 TUR</span><span>🎯 BECERİ ODAKLI</span><span>🆓 TAMAMEN ÜCRETSİZ</span></div>
   </div>
   <div class="right-column">
@@ -35,7 +35,14 @@
       <label class="form-label" for="nick">OYUNCU ADI</label><input id="nick" maxlength="14" value="KAOS KRALI" spellcheck="false" autocomplete="off">
       <div class="form-label mode-label">OYUN MODU</div><div class="mode-grid"><button class="mode-btn selected" data-mode="bot" aria-pressed="true"><b>🤖 TEK OYUNCU</b><small>Yapay zekâya karşı</small></button><button class="mode-btn" data-mode="online" aria-pressed="false"><b>🌐 ONLINE DÜELLO</b>
 <small>Oda koduyla arkadaşına karşı</small></button></div>
-      <div class="online-room hidden" id="onlineRoom">
+      <section class="rules-editor" id="rulesEditor" aria-label="Oda ve maç kuralları">
+ <div class="rules-heading"><b>🎛️ MAÇINI TASARLA</b><small>Oda kurucu ayarları seçer; davetliler aynı kurallarla oynar.</small></div>
+ <label for="rulesPreset">HAZIR OYUN TARZI</label><select id="rulesPreset"><option value="fusion">🔥 HEPSİ BİR ARADA (ÖNERİLEN)</option><option value="evolution">💣 BOMBA EVRİMİ</option><option value="party">⚡ ÇILGIN KAOS</option><option value="classic">🎯 KLASİK DÜELLO</option></select>
+ <div class="rules-columns"><label for="rulesArena">ARENA <select id="rulesArena"><option value="cycle">HER TUR FARKLI</option><option value="random">RASTGELE</option><option value="0">NEON PARK</option><option value="1">BUZ LABİRENTİ</option><option value="2">PORTAL PARTİSİ</option><option value="3">SEK SEK</option><option value="4">SON ŞANS</option></select></label><label for="rulesRounds">TUR SAYISI <select id="rulesRounds"><option value="3">3 TUR</option><option selected value="5">5 TUR</option><option value="7">7 TUR</option></select></label></div>
+ <div class="rules-toggles"><label><input id="rulesUpgrades" type="checkbox" checked><span>🧬 Bomba Evrimi <small>Kaybedene geliştirme seçimi</small></span></label><label><input id="rulesChaos" type="checkbox" checked><span>⚡ Kaos olayları <small>Daralma, turbo, meteor</small></span></label><label><input id="rulesCards" type="checkbox" checked><span>✦ Güç kartları <small>Işınlanma, dondurma, kalkan</small></span></label><label><input id="rulesPanic" type="checkbox" checked><span>🔥 Son 5 saniye <small>Panik hızı +%12</small></span></label></div>
+ <p class="rules-summary" id="selectedRules"></p>
+ </section>
+ <div class="online-room hidden" id="onlineRoom">
   <div class="room-intro"><b>🌐 ARKADAŞINI DAVET ET</b><small>Farklı bilgisayarlardan aynı arenada kapışın.</small></div>
   <div class="room-actions"><button id="createRoom" class="room-primary">＋ ODA KUR</button><span>VEYA</span><div class="join-fields"><input id="joinCode" maxlength="6" placeholder="ODA KODU" aria-label="Oda kodu" autocomplete="off"><button id="joinRoom">KATIL →</button></div></div>
   <p class="room-message" id="roomMessage" role="status">Oda kurulunca kodu veya bağlantıyı arkadaşına gönder.</p>
@@ -58,7 +65,7 @@
   <div class="game-bottom"><div class="instruction" id="controlsHint"><b>WASD</b> hareket · <b>SOL TIK</b> şarj/fırlat · <b>SPACE</b> atıl · <b>E</b> savun · <b>Q</b> kart</div><div class="game-mode-pill" id="modePill">🤖 YAPAY ZEKÂ</div></div>
 </section>
 </main>
-<div id="infoDialog" class="info-dialog hidden" role="dialog" aria-modal="true" aria-label="Oynanış ve kontroller" aria-hidden="true"><div class="info-card"><div class="info-top"><strong>ⓘ OYUN REHBERİ</strong><button id="infoClose" aria-label="Kapat">✕</button></div><h2>BOMBA SENDE!</h2><p>5 tur boyunca bombayı rakibe fırlat. Süre bittiğinde bombayı taşıyan oyuncu turu kaybeder.</p><div class="info-steps"><p><b>💣 ŞARJ + ATIŞ</b> Sol fare tuşuna basılı tut, nişan al ve bırak. Bomba duvardan seker!</p><p><b>⛨ KARŞILAMA</b> E'ye tam isabet öncesi bas, bombayı geri savur.</p><p><b>➚ HIZLI ATILMA</b> Space ile tuzaktan sıyrıl.</p><p><b>✦ KARTLAR</b> Kart topla, Q ile ışınlan / dondur / kalkan kullan.</p></div><div class="info-keys"><span><kbd>W A S D</kbd> Hareket</span><span><kbd>SOL TIK</kbd> Basılı tut / bırak: fırlat</span><span><kbd>SPACE</kbd> Atıl</span><span><kbd>E</kbd> Savun</span><span><kbd>Q</kbd> Kart</span></div><small>İpucu: Online maçlarda rehberi açmak oyun süresini durdurmaz.</small><button id="infoDone" class="room-primary">OYUNA DÖN →</button></div></div>
+<div id="infoDialog" class="info-dialog hidden" role="dialog" aria-modal="true" aria-label="Oynanış ve kontroller" aria-hidden="true"><div class="info-card"><div class="info-top"><strong>ⓘ OYUN REHBERİ</strong><button id="infoClose" aria-label="Kapat">✕</button></div><h2>BOMBA SENDE!</h2><p>5 tur boyunca bombayı rakibe fırlat. Süre bittiğinde bombayı taşıyan oyuncu turu kaybeder.</p><div class="info-steps"><p><b>🧬 BOMBA EVRİMİ</b> Açık olduğunda tur kaybeden oyuncu üç rastgele geliştirmeden birini seçer; yeni güçler maç boyunca kalır.</p><p><b>🎛️ ÖZEL MAÇ</b> Oda kurucu mod, arena, tur sayısı, kaos ve kart kurallarını belirler. Davetliler aynı ayarlarla oynar.</p><p><b>💣 ŞARJ + ATIŞ</b> Sol fare tuşuna basılı tut, nişan al ve bırak. Bomba duvardan seker!</p><p><b>⛨ KARŞILAMA</b> E'ye tam isabet öncesi bas, bombayı geri savur.</p><p><b>➚ HIZLI ATILMA</b> Space ile tuzaktan sıyrıl.</p><p><b>✦ KARTLAR</b> Kart topla, Q ile ışınlan / dondur / kalkan kullan.</p></div><div class="info-keys"><span><kbd>W A S D</kbd> Hareket</span><span><kbd>SOL TIK</kbd> Basılı tut / bırak: fırlat</span><span><kbd>SPACE</kbd> Atıl</span><span><kbd>E</kbd> Savun</span><span><kbd>Q</kbd> Kart</span></div><small>İpucu: Online maçlarda rehberi açmak oyun süresini durdurmaz.</small><button id="infoDone" class="room-primary">OYUNA DÖN →</button></div></div>
 <footer class="footer wrap"><span>© 2026 BOMBA SENDE!</span><span>BU OYUNDA DOSTLUKLAR SINANIR. <b>💣</b></span></footer>
 <script src="/game.js" defer></script>
 </body></html>
