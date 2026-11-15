@@ -17,17 +17,18 @@ const ROOM_TTL_MS = 2 * 60 * 1000;
 function newCode() { let id; do { id=Array.from(crypto.randomBytes(6),v=>CHARS[v%CHARS.length]).join(''); } while(rooms.has(id)); return id; }
 function token() { return crypto.randomBytes(24).toString('hex'); }
 const PRESETS={fusion:{upgrades:true,chaos:true,cards:true,panic:true},evolution:{upgrades:true,chaos:false,cards:true,panic:true},party:{upgrades:false,chaos:true,cards:true,panic:true},classic:{upgrades:false,chaos:false,cards:false,panic:false}};
-function validateRules(input){const v=input&&typeof input==='object'&&!Array.isArray(input)?input:{};const preset=Object.hasOwn(PRESETS,v.preset)?v.preset:'fusion';return {preset,arena:['cycle','random','0','1','2','3','4'].includes(String(v.arena))?String(v.arena):'cycle',rounds:[3,5,7].includes(Number(v.rounds))?Number(v.rounds):5,...Object.fromEntries(['upgrades','chaos','cards','panic'].map(k=>[k,typeof v[k]==='boolean'?v[k]:PRESETS[preset][k]]))};}
+function validateRules(input){const v=input&&typeof input==='object'&&!Array.isArray(input)?input:{};const preset=Object.hasOwn(PRESETS,v.preset)?v.preset:'fusion';return {preset,arena:['cycle','random','0','1','2','3','4'].includes(String(v.arena))?String(v.arena):'cycle',rounds:[3,5,7].includes(Number(v.rounds))?Number(v.rounds):5,upgradePersistence:v.upgradePersistence==='round'?'round':'match',...Object.fromEntries(['upgrades','chaos','cards','panic'].map(k=>[k,typeof v[k]==='boolean'?v[k]:PRESETS[preset][k]]))};}
 function safeName(raw){ return String(raw||'OYUNCU').replace(/[\x00-\x1f\x7f<>]/g,'').trim().slice(0,14)||'OYUNCU'; }
+function safeChat(raw){return typeof raw==='string'?raw.replace(/[\x00-\x1f\x7f\u202a-\u202e<>]/g,'').trim().slice(0,180):'';}
 function send(ws, data){ if(ws && !ws.closed) try { ws.send(JSON.stringify(data)); }catch{} }
 function roster(room){ return room.members.map((m,i)=>({slot:i,name:m.name,online:!!m.ws&&!m.ws.closed})); }
-function presence(room){ const p={type:'presence',code:room.code,players:roster(room),started:room.started,rules:room.rules}; room.members.forEach(m=>send(m.ws,p)); }
+function presence(room){ const p={type:'presence',code:room.code,players:roster(room),started:room.started,rules:room.rules,hostPaused:!!room.hostPaused}; room.members.forEach(m=>send(m.ws,p)); }
 function cleanup(){ const now=Date.now(); for(const [id,room] of rooms) if(now-room.updated>ROOM_TTL_MS && room.members.every(m=>!m.ws||m.ws.closed)) rooms.delete(id); }
 function reject(ws,message){ send(ws,{type:'error',message}); }
 function leave(ws,explicit=false){
   const room=ws.room,slot=ws.slot; if(!room)return;
   const m=room.members[slot];
-  if(m && m.ws===ws) {m.ws=null;room.updated=Date.now();}
+  if(m && m.ws===ws) {m.ws=null;room.updated=Date.now();if(slot===0&&room.started)room.hostPaused=true;}
   ws.room=null;ws.slot=null;
   if(explicit && slot===0){room.members.forEach((x,i)=>{if(i===1){send(x.ws,{type:'closed',message:'Odayı kuran oyuncu ayrıldı.'});if(x.ws){x.ws.room=null;x.ws.slot=null;}}});rooms.delete(room.code);}
   else if(explicit && slot===1){room.members.splice(1,1);room.started=false;presence(room);}
@@ -38,7 +39,7 @@ function join(ws,room,slot,reconnected=false){
   const m=room.members[slot];
   if(m.ws && m.ws!==ws){send(m.ws,{type:'replaced'});m.ws.room=null;m.ws.slot=null;m.ws.close();}
   m.ws=ws;ws.room=room;ws.slot=slot;room.updated=Date.now();
-  send(ws,{type:'joined',code:room.code,slot,token:m.token,players:roster(room),started:room.started,rules:room.rules,reconnected});
+  send(ws,{type:'joined',code:room.code,slot,token:m.token,players:roster(room),started:room.started,rules:room.rules,hostPaused:!!room.hostPaused,chatHistory:room.chatHistory||[],reconnected});
   presence(room);
 }
 function onMessage(ws,raw){
@@ -46,7 +47,7 @@ function onMessage(ws,raw){
   if(!d || typeof d!=='object'||typeof d.type!=='string')return;
   if(d.type==='create'){
     if(ws.room)leave(ws,true);
-    const code=newCode();const room={code,members:[{name:safeName(d.name),token:token(),ws:null}],rules:validateRules(d.rules),started:false,updated:Date.now()};rooms.set(code,room);join(ws,room,0);return;
+    const code=newCode();const room={code,members:[{name:safeName(d.name),token:token(),ws:null}],rules:validateRules(d.rules),started:false,hostPaused:false,chatHistory:[],updated:Date.now()};rooms.set(code,room);join(ws,room,0);return;
   }
   if(d.type==='join'){
     const code=String(d.code||'').trim().toUpperCase().replace(/[^A-Z2-9]/g,''); const room=rooms.get(code);
@@ -62,7 +63,19 @@ function onMessage(ws,raw){
   if(d.type==='leave'){leave(ws,true);return;}
   if(d.type==='start'){
     if(ws.slot!==0 || room.members.length!==2 || !room.members[1].ws)return reject(ws,'Maçı başlatmak için iki oyuncu da odada olmalı.');
-    room.started=true;room.members.forEach(m=>send(m.ws,{type:'start'}));return;
+    room.started=true;room.hostPaused=false;room.members.forEach(m=>send(m.ws,{type:'start'}));return;
+  }
+  if(d.type==='chat'){
+    const msg=safeChat(d.text),member=room.members[ws.slot],now=Date.now();
+    if(!msg||!member||now-(member.lastChatAt||0)<650)return;
+    member.lastChatAt=now;
+    const item={type:'chat',slot:ws.slot,name:member.name,text:msg,at:now};
+    room.chatHistory.push(item);if(room.chatHistory.length>40)room.chatHistory.shift();
+    room.members.forEach(m=>send(m.ws,item));return;
+  }
+  if(d.type==='host_pause'&&ws.slot===0&&room.started){
+    room.hostPaused=!!d.paused;
+    room.members.forEach(m=>send(m.ws,{type:'host_pause',paused:room.hostPaused,reason:room.hostPaused?'Oda kurucusu oyun penceresinden ayrıldı.':'Oda kurucusu oyuna döndü.'}));return;
   }
   if(d.type==='state'){
     if(ws.slot!==0||!room.started||typeof d.state!=='object'||d.state===null||Array.isArray(d.state))return;
