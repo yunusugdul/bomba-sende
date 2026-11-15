@@ -1,34 +1,31 @@
-# BOMBA SENDE! V5 — Özelleştirilebilir Online Oda + Bomba Evrimi
+# 💣 BOMBA SENDE! V6 — Online oda, sohbet, kar ve yeni geliştirmeler
 
-V4 sunucu ve oyun üzerine inşa edilmiştir. Node.js 22+ ile çalışır; ek npm bağımlılığı yoktur.
+V5 üzerine güncelleme; Node.js 22+, ek npm bağımlılığı yoktur. Kullanıcıların bilgisayarına Python/Node.js kurması gerekmez; oyunu canlı web sitesinden oynarlar.
 
-## Başlatma
+## Çalıştırma
 
-```sh
+```bash
 npm start
+npm test
 ```
 
-Tarayıcıda `http://localhost:3000`. Testler için `npm test`. Render için **Node Web Service**, build `npm install --omit=dev`, start `npm start`.
+Render Node Web Service: ücretsiz plan, `npm install --omit=dev` build, `npm start` başlatma. Ana GitHub deposu `yunusugdul/bomba-sende`.
 
-## Oda oluşturma
+## Yenilikler
 
-1. Online düelloyu seç.
-2. **HEPSİ BİR ARADA** (varsayılan), **BOMBA EVRİMİ**, **ÇILGIN KAOS** veya **KLASİK DÜELLO** profillerinden birini seç.
-3. İstediğin arena (`HER TUR FARKLI`, `RASTGELE` veya sabit bir arena), 3/5/7 tur ve güç/kaos/kart/panik kutucuklarını ayarla.
-4. Oda kur. Ayarlar sunucuda doğrulanır, odaya kaydedilir, diğer oyuncuya gönderilir ve maç boyunca sabit kalır. Davet linki odaya doğrudan katılır.
+- Harita/mod seçimi odadan ayrıldıktan sonra hemen açılır (F5 gerekmez).
+- Oynanışı etkilemeyen alan daralması kaldırıldı; kaos olarak Turbo ve Meteor Yağmuru korundu.
+- **Buz Labirenti** içinde 27–44 birim yarıçaplı, 5–8 saniye yaşayan küçük kar bölgeleri belirir. İçlerine giren normal hareket hızı **%30 azalır** (0.7×). Bölge konumları oyun kurucusunun simülasyonundan konuk istemciye iletilir.
+- Lobi ve maç içi **oda sohbeti**: en fazla 180 karakter, mesaj sunucu tarafından filtrelenir ve 650 ms gönderim sınırına tabidir. En son 40 mesaj yalnızca oda üyeleri arasında tutulur; sunucu yeniden başlayınca silinir.
+- Patlama sonrası **sonraki tur bomba kazanan oyuncunun elinde** başlar (ilk tur rastgele).
+- Oda oluşturma menüsü sayfanın üst kısmına taşındı; online odada ön izleme gizlenir.
+- Oda kurucusu sekmeden ayrılırsa/bağlantısı koparsa misafir **“Oyun duraklatıldı”** bilgisi görür. Kurucu geri döndüğünde veya bağlantı onarıldığında oyun sürdürülür. Kurucu tarayıcısının baştan yüklenmesi durumunda maçı yeniden başlatmak gerekebilir.
+- **9 geliştirme:** eski beşli + **Hayalet Bomba** (iç engellerden geçer; dış sınırlardan geçmez), **Hızlı Şarj**, **Çevik Adım**, **Serin Kan**. Manyetik yönelim hafif artırıldı. Kaybedene üç rastgele geliştirme önerilir.
+- Oda oluştururken gelişmelerin **maç boyunca birikmesi** (varsayılan) veya **her tur sıfırlanması** seçilir. “Her tur sıfırlansın” modunda bir önceki turun gücü silinir, ardından kaybeden yeni bir güç seçer ve bu güç sonraki tur geçerlidir.
+- Önceki tuş düzeni değişmedi: **WASD** hareket, **sol tık** fırlatma, **Space** atılma, **E** savunma, **Q** kart.
 
-## Bomba Evrimi
+## Sınırlar
 
-Tur kaybeden oyuncu bir sonraki tur öncesi üç rastgele geliştirmeden birini seçer (14 saniye; süre dolarsa ilk seçenek). Oyun sırasında tüm oyuncular aynı fizik ve seçim durumunu görür. Geliştirmeler maç boyunca birikir, yeni maçta sıfırlanır.
+Oyun fizik/süre hesabını halen oda kurucusunun tarayıcısı yürütür; Render bağlantıları ve sohbeti yönetir. Bu sürüm sunucu-taraflı fizik / anti-hile mimarisine dönüş değildir. Ücretsiz Render servisi bir süre kullanılmadığında uyuyabilir. Rozet ve tekrar/gif özellikleri eklenmemiştir.
 
-- 🚀 Roket Motoru: bomba hızı +%22
-- 🧲 Manyetik: uçan bomba hafifçe hedefe yönelir
-- 🎱 Sekme Ustası: sekme limiti 3 yerine 5
-- ⚡ Seri Atıl: atılma bekleme süresi %25 kısa
-- 🛡️ Refleks: savunma bekleme süresi %25 kısa
-
-Tur kaybeden bir bot ise seçim otomatik yapılır. Online maçta seçim sunucu tarafından yalnızca oda kurucusuna iletilir ve kurucu simülasyonunda uygulanır. İstemciden gelen seçimler aktif teklif listesiyle sınanır.
-
-## Kapsam
-
-Rozetler, GIF/tekrar oynatma ve ilerleme profili bilinçli olarak eklenmedi. V4 hareket, oda kodu, davet, bot, HUD ve oyun altyapısı korundu. Oda oyun simülasyonu halen kurucu tarayıcısında çalışır; tam sunucu-otoriteli anti-hile sistemi değildir. Ücretsiz Render hizmeti uykuya geçebilir.
+V5 yedeği GitHub'da: `backup/v5-before-chat-snow-upgrades`. V4 yedeği: `backup/v4-before-evolution`.
