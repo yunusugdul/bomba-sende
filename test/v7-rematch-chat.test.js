@@ -30,8 +30,8 @@ test('chat feed uses five-message lightweight overlay and Enter opens/sends/clos
  assert.match(js,/if\(e\.key==='Enter'&&options\.mode==='online'&&game\)/);
  assert.match(js,/sendChat\(\$\('gameChatInput'\)\);closeGameChat\(\)/);
  assert.match(js,/keys=Object\.create\(null\);touch\.dx=touch\.dy=0;mouseThrowHeld=false;/);
- assert.match(html,/<div class="arena-shell"><aside id="gameChatPanel"/);
- assert.match(css,/\.arena-chat\{position:absolute;left:17px;bottom:14px/);
+ assert.match(html,/<div id="arenaStage" class="arena-stage"><aside id="gameChatPanel"/);
+ assert.match(css,/body\.is-playing \.arena-chat\{position:relative;left:auto;bottom:auto/);
  assert.doesNotMatch(css,/\.game-chat-panel\{/);
 });
 test('meteor is absent from logic, rendering, and user-visible descriptions',()=>{
