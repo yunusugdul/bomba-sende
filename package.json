@@ -1,8 +1,8 @@
 {
   "name": "bomba-sende-online",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "private": true,
-  "description": "Bomba Sende V7: senkron rövanş, hafif beş mesajlık oyun sohbeti ve Turbo kaos",
+  "description": "Bomba Sende V8: arena dışında sohbet, Sen/O etiketleri ve tam ekranda otomatik solma",
   "engines": {
     "node": ">=22"
   },
