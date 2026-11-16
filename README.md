@@ -1,4 +1,4 @@
-# 💣 BOMBA SENDE! V7 — Rövanş, hafif sohbet ve temiz kaos
+# 💣 BOMBA SENDE! V8 — Rövanş, hafif sohbet ve temiz kaos
 
 V6 üzerine güncelleme; Node.js 22+, ek npm bağımlılığı yoktur. Kullanıcıların bilgisayarına Python/Node.js kurması gerekmez; oyunu canlı web sitesinden oynarlar.
 
@@ -30,7 +30,7 @@ Oyun fizik/süre hesabını halen oda kurucusunun tarayıcısı yürütür; Rend
 
 V5 yedeği GitHub'da: `backup/v5-before-chat-snow-upgrades`. V4 yedeği: `backup/v4-before-evolution`.
 
-## V7 değişiklikleri
+## V8 değişiklikleri
 
 - **Rövanş**: Oda kurucusunun rövanş isteği sunucu tarafından yeni bir `matchId` ile iki oyuncuya birlikte yayınlanır. Önceki maçın geç gelen kareleri yeni maça uygulanmaz.
 - **Maç içi sohbet**: Arenanın sol altında son beş mesaj görünür. Enter giriş açar; ikinci Enter gönderip oyuna döndürür. Esc yazmayı iptal eder. Mesaj kutusu açıkken hareket tuşları bastırılır. Oda bekleme sohbeti aynen kalır.
@@ -39,8 +39,16 @@ V5 yedeği GitHub'da: `backup/v5-before-chat-snow-upgrades`. V4 yedeği: `backup
 
 ## V8 — Sohbet arayüzü
 
-- Online maç sohbeti arenanın üstünü kapatmaz: masaüstünde arena solunda, dar ekranlarda altında görünür.
-- Sohbet isimleri her oyuncuya göre `Sen` ve `O` olarak gösterilir; skor tablosundaki oyuncu isimleri korunur.
-- Tam ekranda, yeni mesaj gelmezse 3 saniye sonra sohbet solar. Enter veya yeni mesaj onu tekrar gösterir. Yazarken gizlenmez.
-- Enter sohbet yazmayı açar, tekrar Enter gönderip kapatır. Esc mesajı iptal eder.
-- Geri dönüş yedeği: `backup/v7-before-chat-sidebar`.
+- Online maç sohbeti arenaya binmez: masaüstünde sol tarafta, dar ekranlarda arenanın altında yer alır.
+- Lobide ve maç içinde sohbet adları kendi ekranına göre `Sen` / `O` olur; gerçek oyuncu isimleri skor tablosunda kalır.
+- Tam ekran modunda, yeni mesaj gelmezse veya yazma kapandıktan sonra 3 saniye içinde sohbet solar; yeni mesaj ya da Enter ile yeniden görünür.
+- Enter sohbeti açar; Enter mesajı gönderir ve yazmayı kapatır. Esc vazgeçer.
+- `backup/v7-before-chat-sidebar` dalı eski sürüme dönüş içindir.
+
+## V9 — Ortalanmış arena ve serbest sohbet
+
+- Oyun alanı masaüstünde ve mobilde ekranın ortasına yerleşir. Sohbet için arena genişliği veya yüksekliği azaltılmaz.
+- Sol alttaki sohbet artık çerçevesiz, yarı saydam ve son beş mesajla sınırlıdır. Dar ekranlarda arenanın kenarına taşabilir.
+- Tam ekran modunda mesaj gelmezse veya sohbet yazma penceresi kapandıktan **4 saniye** sonra sohbet kaybolur. Enter açar; Enter gönderip kapatır; Esc iptal eder.
+- Oda sohbeti, Sen/O etiketleri, oyun kuralları, rövanş ve diğer kontroller korunur.
+- Geri dönüş için `backup/v8-before-centered-chat` dalı.

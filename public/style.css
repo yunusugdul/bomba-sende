@@ -136,24 +136,48 @@ body.online-setup .rules-editor{margin-top:12px}
 @media(max-width:760px){body.online-setup .right-column{order:-1}body.online-setup .hero{order:1}body.online-setup .section-tail{order:2}body.online-setup .landing{gap:16px;padding-top:12px}body.online-setup .play-card{padding:14px 14px}body.online-setup .card-top{margin-bottom:10px}}
 
 
-/* V8: chat is a separate left-side rail; never covers the canvas or game controls. */
-body.is-playing .arena-stage{display:flex;align-items:flex-end;justify-content:center;gap:14px;width:100%;flex:0 0 auto;min-height:0}
-body.is-playing .arena-chat{position:relative;left:auto;bottom:auto;flex:0 0 236px;width:236px;max-width:236px;min-width:0;align-self:flex-end;padding:0 0 7px;gap:6px;z-index:12;opacity:1;visibility:visible;transition:opacity .65s ease,visibility .65s ease;color:#e0dbe9}
+/* V9: canvas always stays centered. Chat floats independently in the left gutter.
+   On narrow viewports it may overlap the edge of the arena, never reserves width. */
+body.is-playing .arena-stage{
+ position:relative;display:flex;align-items:center;justify-content:center;
+ width:100%;flex:0 0 auto;min-height:0;gap:0
+}
+body.is-playing .arena-shell{align-self:auto;flex:0 0 auto;min-width:0}
+body.is-playing .arena-chat{
+ position:absolute;left:clamp(6px,1.15vw,20px);bottom:clamp(9px,2.5vh,32px);
+ flex:none;align-self:auto;width:min(248px,26vw);max-width:248px;min-width:0;
+ z-index:32;padding:0;gap:4px;display:flex;flex-direction:column;
+ pointer-events:none;opacity:1;visibility:visible;
+ transition:opacity .45s ease,visibility .45s ease
+}
 body.is-playing .arena-chat.chat-idle{opacity:0;visibility:hidden;pointer-events:none}
-body.is-playing .arena-chat-feed{padding:8px 8px 7px;max-height:160px;min-height:56px;border:1px solid #8e7fa027;background:linear-gradient(90deg,#0b0a19a8,#0b0a1960 87%,transparent);border-radius:9px}
-body.is-playing .arena-chat-line{font-size:11px;line-height:1.34;font-weight:600;color:#ddd7e8;text-shadow:0 1px 3px #000c}
-body.is-playing .arena-chat-line.from-self strong{color:#d8fb85}
-body.is-playing .arena-chat-line.from-other strong{color:#ffb7d6}
-body.is-playing .arena-chat-hint{padding:0 6px;color:#a69abf91}
-body.is-playing .arena-chat-form{background:#131326ec;border:1px solid #73628d82;box-shadow:0 4px 18px #0007}
-body.is-playing .arena-shell{align-self:auto;min-width:0}
+body.is-playing .arena-chat-feed{
+ min-height:0;max-height:132px;overflow:hidden;display:flex;flex-direction:column;
+ justify-content:flex-end;gap:4px;padding:0;border:0;border-radius:0;
+ background:none;box-shadow:none;backdrop-filter:none
+}
+body.is-playing .arena-chat-feed:empty{display:none}
+body.is-playing .arena-chat-line{
+ font-size:clamp(11px,.96vw,13px);line-height:1.24;font-weight:650;
+ color:#f0eafa;text-shadow:0 2px 4px #06050fe8,0 0 8px #070513db
+}
+body.is-playing .arena-chat-line.from-self strong{color:#ddff86}
+body.is-playing .arena-chat-line.from-other strong{color:#ffc1e0}
+body.is-playing .arena-chat-hint{padding:0;color:#c8bee4af;font-size:9px;text-shadow:0 2px 5px #04030f}
+body.is-playing .arena-chat-form{
+ border:0;border-radius:5px;box-shadow:none;background:#111022b5;
+ padding:4px 5px;backdrop-filter:blur(4px);pointer-events:auto
+}
+body.is-playing .arena-chat-form input{padding:5px;color:#fff}
+body.is-playing .arena-chat-form button{padding:5px 6px}
 .chat-line.from-self b{color:var(--lime)}.chat-line.from-other b{color:var(--pink)}
 @media(max-width:800px){
- body.is-playing .arena-stage{flex-direction:column-reverse;align-items:center;gap:6px}
- body.is-playing .arena-chat{align-self:center;flex:0 0 82px;width:min(100%,620px);max-width:100%;min-height:82px;padding:0;gap:3px}
- body.is-playing .arena-chat-feed{height:53px;min-height:53px;max-height:53px;padding:4px 7px;overflow:hidden}
- body.is-playing .arena-chat-line{font-size:10px;line-height:1.18}
+ body.is-playing .arena-chat{
+  left:6px;bottom:9px;width:min(230px,62%);max-width:230px;gap:3px
+ }
+ body.is-playing .arena-chat-feed{max-height:100px;gap:2px}
+ body.is-playing .arena-chat-line{font-size:10px;line-height:1.2}
  body.is-playing .arena-chat-hint{font-size:8px}
- body.is-playing .arena-chat-form{position:absolute;bottom:14px;left:0;right:0;z-index:3}
+ body.is-playing .arena-chat-form{position:relative;left:auto;right:auto;bottom:auto}
 }
 @media(prefers-reduced-motion:reduce){body.is-playing .arena-chat{transition:none}}

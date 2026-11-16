@@ -51,7 +51,7 @@ function remotePresentation(now){
 }
 
 let game=null, animLast=0, lastHud=0, keys=Object.create(null), muted=false,audio=null;
-const CHAT_FADE_MS=3000;
+const CHAT_FADE_MS=4000;
 let chatFadeTimer=null;
 function showChatTemporarily(){
  const panel=$('gameChatPanel');if(!panel)return;
@@ -451,17 +451,14 @@ function touchAct(action){if(options.mode==='online'&&net.role==='guest'){netSen
  const id=0;if(action==='charge_on')beginCharge(id);else if(action==='charge_off')endCharge(id);else if(action==='dash')useDash(id);else if(action==='parry')useParry(id);else if(action==='card')useCard(id);
 }
 function layoutArena(){if(!document.body.classList.contains('is-playing'))return;
- const screen=$('gameScreen'),shell=screen.querySelector('.arena-shell'),chat=$('gameChatPanel');
+ const screen=$('gameScreen'),shell=screen.querySelector('.arena-shell');
  const winH=window.visualViewport?.height||window.innerHeight;
  const hBlocks=['.game-nav','.scoreline','.fuse-container','.bottom-hud'].reduce((sum,selector)=>sum+(screen.querySelector(selector)?.getBoundingClientRect().height||0),0);
  const screenStyle=getComputedStyle(screen),pad=parseFloat(screenStyle.paddingTop)+parseFloat(screenStyle.paddingBottom),gap=parseFloat(screenStyle.rowGap||screenStyle.gap)||7;
  const availableW=screen.clientWidth-parseFloat(screenStyle.paddingLeft)-parseFloat(screenStyle.paddingRight)-8;
- const onlineChat=options.mode==='online'&&!chat.classList.contains('hidden'),stacked=matchMedia('(max-width:800px)').matches;
- const stageGap=onlineChat?(stacked?6:14):0;
- const sideW=onlineChat&&!stacked?Math.min(236,Math.max(180,availableW*.185)):0;
- const reservedH=onlineChat&&stacked?(chat.getBoundingClientRect().height||82)+stageGap:0;
- const availableH=Math.max(100,winH-pad-hBlocks-gap*4-reservedH-6);
- const width=Math.max(100,Math.min(availableW-sideW-stageGap,availableH*W/H));
+ // Chat floats above the left gutter; it never takes space from the arena layout.
+ const availableH=Math.max(100,winH-pad-hBlocks-gap*4-6);
+ const width=Math.max(100,Math.min(availableW,availableH*W/H));
  shell.style.width=width+'px';shell.style.height=Math.max(60,width*H/W)+'px';
 }
 function readRules(){const p=$('rulesPreset').value;const r={preset:p,arena:$('rulesArena').value,rounds:Number($('rulesRounds').value),upgradePersistence:$('rulesPersistence').value};for(const f of ['upgrades','chaos','cards','panic'])r[f]=$('rules'+f[0].toUpperCase()+f.slice(1)).checked;options.rules=safeRules(r);renderRules();}
