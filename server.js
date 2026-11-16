@@ -22,7 +22,7 @@ function safeName(raw){ return String(raw||'OYUNCU').replace(/[\x00-\x1f\x7f<>]/
 function safeChat(raw){return typeof raw==='string'?raw.replace(/[\x00-\x1f\x7f\u202a-\u202e<>]/g,'').trim().slice(0,180):'';}
 function send(ws, data){ if(ws && !ws.closed) try { ws.send(JSON.stringify(data)); }catch{} }
 function roster(room){ return room.members.map((m,i)=>({slot:i,name:m.name,online:!!m.ws&&!m.ws.closed})); }
-function presence(room){ const p={type:'presence',code:room.code,players:roster(room),started:room.started,rules:room.rules,hostPaused:!!room.hostPaused}; room.members.forEach(m=>send(m.ws,p)); }
+function presence(room){ const p={type:'presence',code:room.code,players:roster(room),started:room.started,matchId:room.matchId,rules:room.rules,hostPaused:!!room.hostPaused}; room.members.forEach(m=>send(m.ws,p)); }
 function cleanup(){ const now=Date.now(); for(const [id,room] of rooms) if(now-room.updated>ROOM_TTL_MS && room.members.every(m=>!m.ws||m.ws.closed)) rooms.delete(id); }
 function reject(ws,message){ send(ws,{type:'error',message}); }
 function leave(ws,explicit=false){
@@ -39,7 +39,7 @@ function join(ws,room,slot,reconnected=false){
   const m=room.members[slot];
   if(m.ws && m.ws!==ws){send(m.ws,{type:'replaced'});m.ws.room=null;m.ws.slot=null;m.ws.close();}
   m.ws=ws;ws.room=room;ws.slot=slot;room.updated=Date.now();
-  send(ws,{type:'joined',code:room.code,slot,token:m.token,players:roster(room),started:room.started,rules:room.rules,hostPaused:!!room.hostPaused,chatHistory:room.chatHistory||[],reconnected});
+  send(ws,{type:'joined',code:room.code,slot,token:m.token,players:roster(room),started:room.started,matchId:room.matchId,rules:room.rules,hostPaused:!!room.hostPaused,chatHistory:room.chatHistory||[],reconnected});
   presence(room);
 }
 function onMessage(ws,raw){
@@ -47,7 +47,7 @@ function onMessage(ws,raw){
   if(!d || typeof d!=='object'||typeof d.type!=='string')return;
   if(d.type==='create'){
     if(ws.room)leave(ws,true);
-    const code=newCode();const room={code,members:[{name:safeName(d.name),token:token(),ws:null}],rules:validateRules(d.rules),started:false,hostPaused:false,chatHistory:[],updated:Date.now()};rooms.set(code,room);join(ws,room,0);return;
+    const code=newCode();const room={code,members:[{name:safeName(d.name),token:token(),ws:null}],rules:validateRules(d.rules),started:false,matchId:0,hostPaused:false,chatHistory:[],updated:Date.now()};rooms.set(code,room);join(ws,room,0);return;
   }
   if(d.type==='join'){
     const code=String(d.code||'').trim().toUpperCase().replace(/[^A-Z2-9]/g,''); const room=rooms.get(code);
@@ -61,9 +61,12 @@ function onMessage(ws,raw){
   const room=ws.room; if(!room)return reject(ws,'Önce odaya katılmalısın.');
   room.updated=Date.now();
   if(d.type==='leave'){leave(ws,true);return;}
-  if(d.type==='start'){
+  if(d.type==='start'||d.type==='rematch'){
     if(ws.slot!==0 || room.members.length!==2 || !room.members[1].ws)return reject(ws,'Maçı başlatmak için iki oyuncu da odada olmalı.');
-    room.started=true;room.hostPaused=false;room.members.forEach(m=>send(m.ws,{type:'start'}));return;
+    if(d.type==='start'&&room.started)return reject(ws,'Maç zaten başladı. Rövanş için rövanş komutunu kullan.');
+    if(d.type==='rematch'&&!room.started)return reject(ws,'Önce ilk maçı başlatmalısın.');
+    room.started=true;room.hostPaused=false;room.matchId++;room.lastSnapshotAt=0;
+    room.members.forEach(m=>send(m.ws,{type:'start',matchId:room.matchId,rematch:d.type==='rematch'}));return;
   }
   if(d.type==='chat'){
     const msg=safeChat(d.text),member=room.members[ws.slot],now=Date.now();
@@ -78,10 +81,10 @@ function onMessage(ws,raw){
     room.members.forEach(m=>send(m.ws,{type:'host_pause',paused:room.hostPaused,reason:room.hostPaused?'Oda kurucusu oyun penceresinden ayrıldı.':'Oda kurucusu oyuna döndü.'}));return;
   }
   if(d.type==='state'){
-    if(ws.slot!==0||!room.started||typeof d.state!=='object'||d.state===null||Array.isArray(d.state))return;
+    if(ws.slot!==0||!room.started||d.matchId!==room.matchId||typeof d.state!=='object'||d.state===null||Array.isArray(d.state))return;
     const state=d.state;if(!Array.isArray(state.players)||state.players.length!==2||!Array.isArray(state.score))return;
     const now=Date.now();if(room.lastSnapshotAt&&now-room.lastSnapshotAt<20)return;room.lastSnapshotAt=now;
-    send(room.members[1]?.ws,{type:'state',seq:Number.isFinite(d.seq)?d.seq:0,state});return;
+    send(room.members[1]?.ws,{type:'state',matchId:room.matchId,seq:Number.isFinite(d.seq)?d.seq:0,state});return;
   }
   if(d.type==='input'&&ws.slot===1&&room.started){
     const num=n=>Number.isFinite(n)?Math.max(-1,Math.min(1,n)):0;

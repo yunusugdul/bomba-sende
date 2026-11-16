@@ -1,6 +1,6 @@
 
 'use strict';
-// BOMBA SENDE! V6.0 — offline, no dependencies. Fixed logical arena: 1000 x 562.
+// BOMBA SENDE! V7.0 — offline, no dependencies. Fixed logical arena: 1000 x 562.
 (() => {
 const W=1000,H=562,R=21, TAU=Math.PI*2;
 const $=id=>document.getElementById(id);
@@ -17,13 +17,13 @@ const MAPS=[
  {name:'SON ŞANS',glow:'#d8ff52',floor:'#142226',blocks:[{x:325,y:92,w:75,h:121},{x:600,y:350,w:75,h:121},{x:468,y:213,w:64,h:137}],features:[{kind:'ice',x:500,y:280,r:123},{kind:'bumper',x:150,y:440,r:31},{kind:'bumper',x:850,y:123,r:31}]}
 ];
 const CARDS={blink:{name:'IŞINLAN',emoji:'🌀',color:'#ab92ff'},frost:{name:'DONDUR',emoji:'❄️',color:'#75e8ff'},shield:{name:'KALKAN',emoji:'🛡️',color:'#e0f27e'}};
-const UPGRADES={rocket:{name:'ROKET MOTORU',emoji:'🚀',desc:'Bomba uçuş hızı +%22.'},magnet:{name:'MANYETİK',emoji:'🧲',desc:'Uçarken rakibe doğru hafifçe yönelir.'},bank:{name:'SEKME USTASI',emoji:'🎱',desc:'Bomba 3 yerine 5 kez sekebilir.'},dash:{name:'SERİ ATIL',emoji:'⚡',desc:'Atılma bekleme süresi %25 azalır.'},parry:{name:'REFLEKS',emoji:'🛡️',desc:'Savunma bekleme süresi %25 azalır.'},ghost:{name:'HAYALET BOMBA',emoji:'👻',desc:'Bomba iç engellerin içinden geçer; dış duvarlardan seker.'},charge:{name:'HIZLI ŞARJ',emoji:'🔋',desc:'Bombayı %20 daha hızlı doldur.'},runner:{name:'ÇEVİK ADIM',emoji:'👟',desc:'Normal hareket hızın %8 artar.'},cooling:{name:'SERİN KAN',emoji:'🧊',desc:'Dondurma ve meteor sersemletmesi %30 kısalır.'}};
+const UPGRADES={rocket:{name:'ROKET MOTORU',emoji:'🚀',desc:'Bomba uçuş hızı +%22.'},magnet:{name:'MANYETİK',emoji:'🧲',desc:'Uçarken rakibe doğru hafifçe yönelir.'},bank:{name:'SEKME USTASI',emoji:'🎱',desc:'Bomba 3 yerine 5 kez sekebilir.'},dash:{name:'SERİ ATIL',emoji:'⚡',desc:'Atılma bekleme süresi %25 azalır.'},parry:{name:'REFLEKS',emoji:'🛡️',desc:'Savunma bekleme süresi %25 azalır.'},ghost:{name:'HAYALET BOMBA',emoji:'👻',desc:'Bomba iç engellerin içinden geçer; dış duvarlardan seker.'},charge:{name:'HIZLI ŞARJ',emoji:'🔋',desc:'Bombayı %20 daha hızlı doldur.'},runner:{name:'ÇEVİK ADIM',emoji:'👟',desc:'Normal hareket hızın %8 artar.'},cooling:{name:'SERİN KAN',emoji:'🧊',desc:'Dondurma etkisi %30 daha kısa sürer.'}};
 const PRESETS={fusion:{upgrades:true,chaos:true,cards:true,panic:true},evolution:{upgrades:true,chaos:false,cards:true,panic:true},party:{upgrades:false,chaos:true,cards:true,panic:true},classic:{upgrades:false,chaos:false,cards:false,panic:false}};
 const DEFAULT_RULES=()=>({preset:'fusion',arena:'cycle',rounds:5,upgradePersistence:'match',...PRESETS.fusion});
 function safeRules(value){const v=value&&typeof value==='object'?value:{},preset=Object.hasOwn(PRESETS,v.preset)?v.preset:'fusion';return {preset,arena:['cycle','random','0','1','2','3','4'].includes(String(v.arena))?String(v.arena):'cycle',rounds:[3,5,7].includes(Number(v.rounds))?Number(v.rounds):5,upgradePersistence:v.upgradePersistence==='round'?'round':'match',...Object.fromEntries(['upgrades','chaos','cards','panic'].map(k=>[k,typeof v[k]==='boolean'?v[k]:PRESETS[preset][k]]))};}
-const CHAOS={turbo:{name:'⚡ TURBO ZAMANI!',color:'#e2ff60'},meteors:{name:'☄️ METEOR YAĞMURU!',color:'#ffb677'}};
+const CHAOS={turbo:{name:'⚡ TURBO ZAMANI!',color:'#e2ff60'}};
 let options={mode:'bot',difficulty:'normal',nickname:'KAOS KRALI',rules:DEFAULT_RULES()};
-const net={chatHistory:[],chatUnread:0,focusPaused:false,ws:null,role:null,slot:null,code:null,token:null,players:[],connected:false,closing:false,freeze:false,prevPhase:null,lastState:0,lastInput:0,remote:{x:0,y:0,aimX:0,aimY:0,aimActive:false},hostAway:false,retry:null,snapshots:[],seq:0};
+const net={chatHistory:[],chatUnread:0,matchId:0,focusPaused:false,ws:null,role:null,slot:null,code:null,token:null,players:[],connected:false,closing:false,freeze:false,prevPhase:null,lastState:0,lastInput:0,remote:{x:0,y:0,aimX:0,aimY:0,aimActive:false},hostAway:false,retry:null,snapshots:[],seq:0};
 // Each remote snapshot is authoritative. Display interpolation affects rendering only,
 // never collision, timers, score, or the game simulation.
 const VIEW_DELAY=95,MAX_EXTRAPOLATE=38;
@@ -61,21 +61,21 @@ function burst(x,y,color,count=14,speed=160){for(let i=0;i<count;i++){const ang=
 function ring(x,y,color,max=105,seconds=.48){rings.push({x,y,color,r:0,max,t:seconds,life:seconds})}
 function createPlayer(id,name){return {id,name,x:id?850:150,y:281,vx:0,vy:0,face:{x:id?-1:1,y:0},aim:{x:id?-1:1,y:0},r:R,color:id?'#ff81c4':'#d8ff52',dashCD:0,dashTime:0,parryCD:0,parryTime:0,shieldTime:0,shieldUsed:false,stun:0,portalCD:0,upgrades:[],card:null,charge:0,charging:false,speed:0,blinkTrail:[],aiThink:0,aiDecision:null}}
 function newGame(){particles=[];rings=[];shakes=0;keys=Object.create(null);touch.dx=touch.dy=0;
- game={phase:'ready',round:0,score:[0,0],players:[createPlayer(0,options.nickname),createPlayer(1,options.mode==='bot'?'BOT PATLATÖR':options.mode==='online'?(net.players[1]?.name||'RAKİP'):'OYUNCU 2')],holder:0,bomb:{mode:'held',owner:0,x:150,y:281,vx:0,vy:0,life:0,bounces:0,trail:[],charge:0},map:MAPS[0],fuse:18,initialFuse:18,phaseTime:0,lock:0,rules:safeRules(options.rules),upgradeOffer:[],upgradeChooser:null,upgradeTimer:0,card:null,cardDelay:3.1,chaos:null,chaosStarted:false,chaosTimer:0,meteorTimer:0,meteors:[],snowPatches:[],snowDelay:1.1,elapsed:0,roundLoser:null,pausedFrom:null,beepMark:99,slowTime:0,stats:{throws:[0,0],hits:[0,0],parries:[0,0],dashes:[0,0]}};
+ game={phase:'ready',round:0,score:[0,0],players:[createPlayer(0,options.nickname),createPlayer(1,options.mode==='bot'?'BOT PATLATÖR':options.mode==='online'?(net.players[1]?.name||'RAKİP'):'OYUNCU 2')],holder:0,bomb:{mode:'held',owner:0,x:150,y:281,vx:0,vy:0,life:0,bounces:0,trail:[],charge:0},map:MAPS[0],fuse:18,initialFuse:18,phaseTime:0,lock:0,rules:safeRules(options.rules),upgradeOffer:[],upgradeChooser:null,upgradeTimer:0,card:null,cardDelay:3.1,chaos:null,chaosStarted:false,chaosTimer:0,snowPatches:[],snowDelay:1.1,elapsed:0,roundLoser:null,pausedFrom:null,beepMark:99,slowTime:0,stats:{throws:[0,0],hits:[0,0],parries:[0,0],dashes:[0,0]}};
  $('landing').classList.add('hidden');$('gameScreen').classList.remove('hidden');document.body.classList.add('is-playing');
  if(options.mode==='online'){game.players[0].name=net.players[0]?.name||'KURUCU';game.players[1].name=net.players[1]?.name||'MİSAFİR';}
  $('player0Name').textContent=game.players[0].name;$('player1Name').textContent=game.players[1].name;requestAnimationFrame(layoutArena);
  $('modePill').textContent=options.mode==='online'?'🌐 '+net.code+' • '+(['upgrades','chaos','cards','panic'].some(k=>game.rules[k]!==PRESETS[game.rules.preset][k])?'ÖZEL KURALLAR':({fusion:'HEPSİ BİR ARADA',evolution:'BOMBA EVRİMİ',party:'ÇILGIN KAOS',classic:'KLASİK'}[game.rules.preset]||'ÖZEL')):options.mode==='bot'?'🤖 '+({easy:'RAHAT',normal:'DENGELİ',hard:'ÇILGIN'}[options.difficulty]):'👥 AYNI KLAVYE';
  $('controlsHint').innerHTML=options.mode!=='local'?'<b>WASD</b> hareket · <b>SOL TIK</b> şarj/fırlat · <b>SPACE</b> atıl · <b>E</b> savun · <b>Q</b> kart':'<b>P1:</b> WASD, F atış, G atıl, H savun, R kart &nbsp; <b>P2:</b> oklar, L atış, K atıl, J savun, I kart';
- $('keyThrow').textContent=options.mode!=='local'?'SOL TIK':'F';$('keyDash').textContent=options.mode!=='local'?'SPACE':'G';$('keyParry').textContent=options.mode!=='local'?'E':'H';$('keyPower').textContent=options.mode!=='local'?'Q':'R';$('pauseBtn').classList.toggle('hidden',options.mode==='online');$('chatToggle').classList.toggle('hidden',options.mode!=='online');
+ $('keyThrow').textContent=options.mode!=='local'?'SOL TIK':'F';$('keyDash').textContent=options.mode!=='local'?'SPACE':'G';$('keyParry').textContent=options.mode!=='local'?'E':'H';$('keyPower').textContent=options.mode!=='local'?'Q':'R';$('pauseBtn').classList.toggle('hidden',options.mode==='online');$('chatToggle').classList.toggle('hidden',options.mode!=='online');$('gameChatPanel').classList.toggle('hidden',options.mode!=='online');closeGameChat();renderChat();
  const touchDevice=(navigator.maxTouchPoints>0||matchMedia('(pointer:coarse)').matches);if(touchDevice&&$('touchControls').parentElement!==$('gameScreen'))$('gameScreen').append($('touchControls'));$('touchControls').style.display=options.mode!=='local'&&touchDevice?'block':'none';if(options.mode!=='local'&&touchDevice){$('keyThrow').textContent='💣';$('keyDash').textContent='➚';$('keyParry').textContent='⛨';$('keyPower').textContent='✦';$('controlsHint').textContent='Sol joystick ile hareket • FIRLAT basılı tut/bırak • ATIL kaç • SAVUN karşıla • KART kullan';}
  if(options.mode==='online'){net.focusPaused=false;startRound();game.phase='countdown';game.phaseTime=3.15;hideOverlay();updateHUD();return;}
  startRound();showOverlay('MAÇ BAŞLIYOR','🎯','YENİ KURALLAR, YENİ KAOS','Atış tuşuna basılı tut, nişan al ve bırak. Gelen bombayı savunmayla geri sektir!', [{label:'HAZIRIM, BAŞLAT →',action:()=>{snd('ready');game.phase='countdown';game.phaseTime=3.2;hideOverlay()}}]);updateHUD()}
-function startRound(){const g=game,nextHolder=g.round===0?Math.floor(rand(0,2)):(1-g.roundLoser);g.round++;g.map=MAPS[g.rules.arena==='random'?Math.floor(rand(0,MAPS.length)):g.rules.arena==='cycle'?(g.round-1)%MAPS.length:Number(g.rules.arena)];g.holder=nextHolder;g.phase='countdown';g.phaseTime=3.15;g.initialFuse=rand(19,23.4);g.fuse=g.initialFuse;g.beepMark=99;g.elapsed=0;g.lock=.55;g.bomb={mode:'held',owner:g.holder,x:g.players[g.holder].x,y:g.players[g.holder].y-27,vx:0,vy:0,life:0,bounces:0,trail:[],charge:0};g.card=null;g.cardDelay=3.6;g.upgradeOffer=[];g.upgradeChooser=null;g.upgradeTimer=0;g.chaos=null;g.chaosStarted=false;g.chaosTimer=0;g.meteorTimer=0;g.meteors=[];g.snowPatches=[];g.snowDelay=.9;g.roundLoser=null;g.slowTime=0;
+function startRound(){const g=game,nextHolder=g.round===0?Math.floor(rand(0,2)):(1-g.roundLoser);g.round++;g.map=MAPS[g.rules.arena==='random'?Math.floor(rand(0,MAPS.length)):g.rules.arena==='cycle'?(g.round-1)%MAPS.length:Number(g.rules.arena)];g.holder=nextHolder;g.phase='countdown';g.phaseTime=3.15;g.initialFuse=rand(19,23.4);g.fuse=g.initialFuse;g.beepMark=99;g.elapsed=0;g.lock=.55;g.bomb={mode:'held',owner:g.holder,x:g.players[g.holder].x,y:g.players[g.holder].y-27,vx:0,vy:0,life:0,bounces:0,trail:[],charge:0};g.card=null;g.cardDelay=3.6;g.upgradeOffer=[];g.upgradeChooser=null;g.upgradeTimer=0;g.chaos=null;g.chaosStarted=false;g.chaosTimer=0;g.snowPatches=[];g.snowDelay=.9;g.roundLoser=null;g.slowTime=0;
  g.players.forEach((p,i)=>{p.x=i?850:150;p.y=281;p.vx=p.vy=p.speed=0;p.face={x:i?-1:1,y:0};p.aim={x:i?-1:1,y:0};p.charging=false;p.charge=0;p.dashCD=0;p.dashTime=0;p.parryCD=0;p.parryTime=0;p.shieldTime=0;p.shieldUsed=false;p.stun=0;p.portalCD=0;p.card=null;p.aiThink=0;p.aiDecision=null});$('mapName').textContent=g.map.name;hideOverlay()}
 function showOverlay(eyebrow,icon,title,description,actions=[]){$('overlayEyebrow').textContent=eyebrow;$('overlayIcon').textContent=icon;$('overlayTitle').textContent=title;$('overlayDesc').textContent=description;const div=$('overlayFoot');div.replaceChildren();for(const a of actions){const b=document.createElement('button');b.textContent=a.label;if(a.secondary)b.classList.add('secondary-btn');b.addEventListener('click',()=>{snd('click');a.action()});div.appendChild(b)}$('overlay').classList.remove('hidden')}
 function hideOverlay(){$('overlay').classList.add('hidden')}
-function returnMenu(){if(options.mode==='online')leaveOnline();closeGameChat();game=null;keys=Object.create(null);document.body.classList.remove('is-playing');$('gameScreen').classList.add('hidden');$('landing').classList.remove('hidden');hideOverlay();$('eventCallout').classList.add('hidden');} 
+function returnMenu(){if(options.mode==='online')leaveOnline();closeGameChat();$('gameChatPanel').classList.add('hidden');game=null;keys=Object.create(null);document.body.classList.remove('is-playing');$('gameScreen').classList.add('hidden');$('landing').classList.remove('hidden');hideOverlay();$('eventCallout').classList.add('hidden');} 
 function pauseGame(){if(options.mode==='online')return;if(!game)return;if(game.phase==='paused'){game.phase=game.pausedFrom;hideOverlay();return}if(!['active','countdown'].includes(game.phase))return;game.pausedFrom=game.phase;game.phase='paused';showOverlay('MOLA ZAMANI','⏸️','OYUN DURAKLATILDI','Hazır olduğunda kaldığın yerden devam et.',[{label:'DEVAM ET →',action:pauseGame},{label:'ANA MENÜ',secondary:true,action:returnMenu}])}
 function showHelp(){$('infoDialog').classList.remove('hidden');$('infoDialog').setAttribute('aria-hidden','false');$('infoClose').focus();}
 function closeHelp(){$('infoDialog').classList.add('hidden');$('infoDialog').setAttribute('aria-hidden','true');$('helpBtn').focus();}
@@ -143,9 +143,14 @@ function updatePlayer(p,dt){p.dashCD=Math.max(0,p.dashCD-dt);p.parryCD=Math.max(
 function adjustPlayerOverlap(){const a=game.players[0],b=game.players[1],d=dist(a,b);if(d<a.r+b.r+3){const dir=unit(b.x-a.x,b.y-a.y),s=(a.r+b.r+3-d)/2;a.x-=dir.x*s;b.x+=dir.x*s;a.y-=dir.y*s;b.y+=dir.y*s}}
 function spawners(dt){const g=game;if(!g.rules.cards)return;if(!g.card){g.cardDelay-=dt;if(g.cardDelay<=0){const spots=[{x:500,y:118},{x:500,y:440},{x:180,y:150},{x:825,y:410},{x:500,y:285},{x:720,y:105},{x:290,y:444}].filter(p=>!blocked(p.x,p.y,32)&&g.players.every(v=>dist(p,v)>80));if(spots.length){const pos=choose(spots);g.card={x:pos.x,y:pos.y,type:choose(Object.keys(CARDS)),t:0};ring(pos.x,pos.y,CARDS[g.card.type].color,65,.7)}else g.cardDelay=1}
  }else{g.card.t+=dt;for(const p of g.players){if(Math.hypot(p.x-g.card.x,p.y-g.card.y)<p.r+23){p.card=g.card.type;burst(g.card.x,g.card.y,CARDS[g.card.type].color,18,140);snd('card',.75);alertToast((p.id===0?'✦ KART ALDIN: ':'✦ RAKİP KART ALDI: ')+CARDS[p.card].name);g.card=null;g.cardDelay=4.8;break}}}}
-function chaosStep(dt){const g=game;if(g.rules.chaos&&!g.chaosStarted&&g.fuse<g.initialFuse*.57){g.chaosStarted=true;g.chaos=choose(['turbo','meteors']);g.chaosTimer=6.5;g.meteorTimer=1;flashCallout(CHAOS[g.chaos].name,2.4);snd('win',.4)}
- if(g.chaosTimer>0){g.chaosTimer-=dt;if(g.chaos==='meteors'){g.meteorTimer-=dt;if(g.meteorTimer<=0){g.meteorTimer=1.25;g.meteors.push({x:rand(105,895),y:rand(95,467),t:.85,life:.85,r:64})}}if(g.chaosTimer<=0){g.chaos=null;g.meteors=[]}}
- for(let i=g.meteors.length-1;i>=0;i--){const m=g.meteors[i];m.t-=dt;if(m.t<=0){for(const p of g.players){if(Math.hypot(p.x-m.x,p.y-m.y)<m.r+p.r){p.stun=Math.max(p.stun,p.upgrades.includes('cooling')?.42:.60);burst(p.x,p.y,'#ffb175',15,180);alertToast(p.id===0?'☄️ METEOR ÇARPTI!':'☄️ RAKİBE METEOR!',.65)}}ring(m.x,m.y,'#ffad6f',100,.65);burst(m.x,m.y,'#ffb175',27,220);snd('boom',.25);g.meteors.splice(i,1)}}}
+function chaosStep(dt){
+ const g=game;
+ if(g.rules.chaos&&!g.chaosStarted&&g.fuse<g.initialFuse*.57){
+  g.chaosStarted=true;g.chaos='turbo';g.chaosTimer=6.5;
+  flashCallout(CHAOS.turbo.name,2.4);snd('win',.4);
+ }
+ if(g.chaosTimer>0){g.chaosTimer-=dt;if(g.chaosTimer<=0)g.chaos=null;}
+}
 function snowStep(dt){
  const g=game;if(g.map!==MAPS[1])return;
  g.snowDelay-=dt;
@@ -171,7 +176,7 @@ function chooseUpgrade(id){const g=game;if(!g||g.phase!=='upgrade'||!g.upgradeOf
 function applyUpgrade(id){const g=game;if(!g||g.phase!=='upgrade'||!g.upgradeOffer.includes(id))return;const p=g.players[g.upgradeChooser];if(!p.upgrades.includes(id))p.upgrades.push(id);flashCallout(UPGRADES[id].emoji+' '+p.name+': '+UPGRADES[id].name,2.5);startRound();snd('ready');}
 function nextAfterExplosion(){if(!game||game.phase!=='explode')return;const g=game;if(g.round>=g.rules.rounds){finishMatch();return}if(g.rules.upgrades&&g.rules.upgradePersistence==='round'){g.players.forEach(p=>{p.upgrades=[];});}if(g.rules.upgrades){const offer=upgradeOptions(g);if(offer.length){g.phase='upgrade';g.upgradeChooser=g.roundLoser;g.upgradeOffer=offer;g.upgradeTimer=14;showUpgradeChoice();return;}}startRound();snd('ready')}
 
-function finishMatch(){const g=game;g.phase='finished';const winner=g.score[0]>g.score[1]?0:1;const humanWon=winner===0;const title=options.mode==='bot'?(humanWon?'ŞAMPİYON SENSİN!':'BOT BU SEFER KAZANDI!'):(g.players[winner].name+' KAZANDI!');showOverlay('MAÇ BİTTİ • '+g.score[0]+'–'+g.score[1],humanWon?'🏆':'🎖️',title,g.rules.rounds+' turda '+g.stats.throws[0]+' atış, '+g.stats.hits[0]+' isabet ve '+g.stats.parries[0]+' başarılı savunma yaptın. Bir rövanş daha?', [{label:'↻ RÖVANŞ!',action:()=>{if(options.mode==='online'){netSend({type:'start'});}else{newGame();game.phase='countdown';hideOverlay();}}},{label:'ANA MENÜ',secondary:true,action:returnMenu}]);snd('win');for(let i=0;i<110;i++)burst(rand(100,900),rand(10,100),choose(['#ff79bd','#d8ff52','#a98bff','#fff7a0']),1,rand(40,190))}
+function finishMatch(){const g=game;g.phase='finished';const winner=g.score[0]>g.score[1]?0:1;const humanWon=winner===0;const title=options.mode==='bot'?(humanWon?'ŞAMPİYON SENSİN!':'BOT BU SEFER KAZANDI!'):(g.players[winner].name+' KAZANDI!');showOverlay('MAÇ BİTTİ • '+g.score[0]+'–'+g.score[1],humanWon?'🏆':'🎖️',title,g.rules.rounds+' turda '+g.stats.throws[0]+' atış, '+g.stats.hits[0]+' isabet ve '+g.stats.parries[0]+' başarılı savunma yaptın. Bir rövanş daha?', [{label:'↻ RÖVANŞ!',action:()=>{if(options.mode==='online'){netSend({type:'rematch'});showOverlay('RÖVANŞ','⏳','YENİ MAÇ HAZIRLANIYOR','İki oyuncu da aynı anda yeni maça alınacak.',[]);}else{newGame();game.phase='countdown';hideOverlay();}}},{label:'ANA MENÜ',secondary:true,action:returnMenu}]);snd('win');for(let i=0;i<110;i++)burst(rand(100,900),rand(10,100),choose(['#ff79bd','#d8ff52','#a98bff','#fff7a0']),1,rand(40,190))}
 function tick(dt){globalTime+=dt;for(const pt of particles){pt.x+=pt.vx*dt;pt.y+=pt.vy*dt;pt.vy+=150*dt;pt.t-=dt}particles=particles.filter(p=>p.t>0);for(const r of rings){r.t-=dt;r.r=lerp(r.max,0,r.t/r.life)}rings=rings.filter(r=>r.t>0);if(shakes>0)shakes=Math.max(0,shakes-35*dt);if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)$('toast').classList.remove('show')}if(calloutTimer>0){calloutTimer-=dt;if(calloutTimer<=0)$('eventCallout').classList.add('hidden')}
  if(!game)return;const g=game;
  if(g.phase==='countdown'){g.phaseTime-=dt;if(g.phaseTime<=0){g.phase='active';g.phaseTime=0;alertToast('🔥 BAŞLADI!',.8);snd('ready')}else if(Math.floor(g.phaseTime+.1)!==Math.floor(g.phaseTime+dt+.1))snd('beep',.6);return}
@@ -206,7 +211,7 @@ function drawFeatures(){const g=game;
  }
  for(const f of g.map.features){if(f.kind==='ice'){const rad=ctx.createRadialGradient(f.x,f.y,10,f.x,f.y,f.r);rad.addColorStop(0,'#82e7ff3a');rad.addColorStop(1,'#82e7ff04');ctx.fillStyle=rad;ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,TAU);ctx.fill();ctx.strokeStyle='#79eaff65';ctx.lineWidth=2;ctx.setLineDash([8,11]);ctx.stroke();ctx.setLineDash([]);text('❄',f.x,f.y,37,'#75e8ff')}else if(f.kind==='portal'){const spin=globalTime*.9*(f.to===0?1:-1);ctx.save();ctx.translate(f.x,f.y);ctx.rotate(spin);ctx.shadowBlur=24;ctx.shadowColor='#b199ff';ctx.strokeStyle='#b199ff';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,f.r,-.3,2.3);ctx.stroke();ctx.strokeStyle='#ff84d1';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,f.r-13,-2.1,.4);ctx.stroke();ctx.restore();text('🌀',f.x,f.y,28)}else if(f.kind==='bumper'){ctx.save();ctx.translate(f.x,f.y);ctx.shadowBlur=22;ctx.shadowColor='#ffd671';ctx.beginPath();ctx.arc(0,0,f.r+3,0,TAU);ctx.fillStyle='#8a5c35';ctx.fill();ctx.strokeStyle='#ffd477';ctx.lineWidth=4;ctx.stroke();ctx.restore();text('✷',f.x,f.y,37,'#ffec8f')}}
  for(const b of g.map.blocks){ctx.shadowColor='#04040b';ctx.shadowBlur=15;rounded(b.x+5,b.y+7,b.w,b.h,8,'#070713',null);ctx.shadowBlur=0;rounded(b.x,b.y,b.w,b.h,7,'#51426f','#a38ac4');rounded(b.x+6,b.y+6,b.w-12,b.h-12,4,'#3a3056','#6e5b8d');ctx.fillStyle=g.map.glow+'78';ctx.fillRect(b.x+11,b.y+12,b.w-22,3);ctx.fillStyle='#ffffff10';ctx.fillRect(b.x+8,b.y+b.h-13,b.w-16,3)}
- for(const m of g.meteors){ctx.save();ctx.globalAlpha=clamp(.5+(Math.sin(globalTime*18)*.17),.2,.9);ctx.fillStyle='#ff70563b';ctx.beginPath();ctx.arc(m.x,m.y,m.r,0,TAU);ctx.fill();ctx.strokeStyle='#ffab6b';ctx.lineWidth=4;ctx.beginPath();ctx.arc(m.x,m.y,m.r*(1-m.t/m.life)+12,0,TAU);ctx.stroke();text('☄',m.x,m.y,28,'#ffca9a');ctx.restore()}}
+}
 function drawCard(){if(!game.card)return;const p=game.card,c=CARDS[p.type];const y=p.y+Math.sin(globalTime*5)*7;ctx.save();ctx.translate(p.x,y);ctx.shadowBlur=28;ctx.shadowColor=c.color;ctx.fillStyle=c.color+'3c';ctx.strokeStyle=c.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,30,0,TAU);ctx.fill();ctx.stroke();ctx.restore();text(c.emoji,p.x,y,29);text('✦ BONUS',p.x,y+44,10,c.color,900)}
 function drawPlayer(p){const t=globalTime,carrying=game.holder===p.id;const glow=carrying?'#ffd27e':p.color;ctx.save();ctx.translate(p.x,p.y);let shadow=ctx.createRadialGradient(0,0,6,0,0,62);shadow.addColorStop(0,glow+'52');shadow.addColorStop(1,glow+'00');ctx.fillStyle=shadow;ctx.beginPath();ctx.arc(0,0,62,0,TAU);ctx.fill();ctx.fillStyle='#0608159c';ctx.beginPath();ctx.ellipse(0,23,25,10,0,0,TAU);ctx.fill();
  if(carrying){ctx.strokeStyle='#ffcb67';ctx.lineWidth=3;ctx.globalAlpha=.58+Math.sin(t*12)*.23;ctx.beginPath();ctx.arc(0,0,31+Math.sin(t*8)*3,0,TAU);ctx.stroke();ctx.globalAlpha=1}
@@ -233,7 +238,7 @@ function frame(time){const dt=Math.min(.034,Math.max(0,(time-animLast)/1000||.01
  }else{
   tick(dt);
   if(options.mode==='online'&&net.role==='host'&&net.connected&&game&&time-net.lastState>32){
-   netSend({type:'state',seq:++net.seq,state:game});net.lastState=time;
+   netSend({type:'state',seq:++net.seq,matchId:net.matchId,state:game});net.lastState=time;
   }
  }
  if(game){
@@ -248,7 +253,7 @@ function frame(time){const dt=Math.min(.034,Math.max(0,(time-animLast)/1000||.01
  requestAnimationFrame(frame)
 }
 function isTyping(el){return el&&['INPUT','TEXTAREA','SELECT'].includes(el.tagName)}
-function pressControl(code,down){if(!game||game.phase==='finished'||game.phase==='paused'||game.phase==='help')return;
+function pressControl(code,down){if(isGameChatActive()||!game||game.phase==='finished'||game.phase==='paused'||game.phase==='help')return;
  if(options.mode==='online'){
    const acts={Space:'dash',KeyE:'parry',KeyQ:'card'};
    const action=acts[code];if(!action)return;
@@ -260,9 +265,9 @@ function pressControl(code,down){if(!game||game.phase==='finished'||game.phase==
  let id=null,action=null;if(m==='bot'){const actions={Space:'dash',KeyE:'parry',KeyQ:'card'};if(actions[code]){id=0;action=actions[code]}}
  else {const actions0={KeyF:'throw',KeyG:'dash',KeyH:'parry',KeyR:'card'},actions1={KeyL:'throw',KeyK:'dash',KeyJ:'parry',KeyI:'card'};if(actions0[code]){id=0;action=actions0[code]}else if(actions1[code]){id=1;action=actions1[code]}}
  if(id===null)return;if(action==='throw'){if(down)beginCharge(id);else endCharge(id)}else if(down){if(action==='dash')useDash(id);else if(action==='parry')useParry(id);else if(action==='card')useCard(id)}}
-document.addEventListener('keydown',e=>{if(e.code==='Escape'&&!$('gameChatPanel').classList.contains('hidden')){e.preventDefault();closeGameChat();return;}if(e.code==='Escape'&&!$('infoDialog').classList.contains('hidden')){e.preventDefault();closeHelp();return;}if(!$('infoDialog').classList.contains('hidden'))return;if(isTyping(e.target))return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&game)e.preventDefault();if(e.code==='Escape'||e.code==='KeyP'){if(game&&game.phase==='help'){game.phase=game.pausedFrom;hideOverlay()}else pauseGame();return}if(!keys[e.code])pressControl(e.code,true);keys[e.code]=true});document.addEventListener('keyup',e=>{if(isTyping(e.target))return;keys[e.code]=false;pressControl(e.code,false)});window.addEventListener('blur',()=>{if(game&&game.phase==='active'&&options.mode!=='online')pauseGame();if(options.mode==='online'&&net.role==='guest')netSend({type:'act',action:'charge_off'});if(options.mode==='online'&&net.role==='host')pauseHostWhenAway();mouseThrowHeld=false;keys=Object.create(null);touch.throwDown=false});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&options.mode==='online'&&game){e.preventDefault();if(e.repeat)return;if(isGameChatActive()){sendChat($('gameChatInput'));closeGameChat();}else if(!isTyping(e.target)){openGameChat();}return;}if(e.code==='Escape'&&isGameChatActive()){e.preventDefault();closeGameChat();return;}if(e.code==='Escape'&&!$('infoDialog').classList.contains('hidden')){e.preventDefault();closeHelp();return;}if(!$('infoDialog').classList.contains('hidden'))return;if(isTyping(e.target))return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&game)e.preventDefault();if(e.code==='Escape'||e.code==='KeyP'){if(game&&game.phase==='help'){game.phase=game.pausedFrom;hideOverlay()}else pauseGame();return}if(!keys[e.code])pressControl(e.code,true);keys[e.code]=true});document.addEventListener('keyup',e=>{if(isTyping(e.target))return;keys[e.code]=false;pressControl(e.code,false)});window.addEventListener('blur',()=>{if(game&&game.phase==='active'&&options.mode!=='online')pauseGame();if(options.mode==='online'&&net.role==='guest')netSend({type:'act',action:'charge_off'});if(options.mode==='online'&&net.role==='host')pauseHostWhenAway();mouseThrowHeld=false;keys=Object.create(null);touch.throwDown=false});
 canvas.addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect(),ratioX=W/r.width,ratioY=H/r.height;mouse.x=(e.clientX-r.left)*ratioX;mouse.y=(e.clientY-r.top)*ratioY;if(e.pointerType==='mouse')mouse.active=true});
-let mouseThrowHeld=false;canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0||!game||game.phase!=='active'||options.mode==='local')return;mouse.active=true;mouseThrowHeld=true;e.preventDefault();if(options.mode==='online'&&net.role==='guest')netSend({type:'act',action:'charge_on'});else beginCharge(0)});window.addEventListener('pointerup',e=>{if(e.pointerType!=='mouse'||e.button!==0||!mouseThrowHeld)return;mouseThrowHeld=false;if(!game||game.phase!=='active'||options.mode==='local')return;if(options.mode==='online'&&net.role==='guest')netSend({type:'act',action:'charge_off'});else endCharge(0)});
+let mouseThrowHeld=false;canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0||!game||game.phase!=='active'||options.mode==='local'||isGameChatActive())return;mouse.active=true;mouseThrowHeld=true;e.preventDefault();if(options.mode==='online'&&net.role==='guest')netSend({type:'act',action:'charge_on'});else beginCharge(0)});window.addEventListener('pointerup',e=>{if(e.pointerType!=='mouse'||e.button!==0||!mouseThrowHeld)return;mouseThrowHeld=false;if(!game||game.phase!=='active'||options.mode==='local')return;if(isGameChatActive())return;if(options.mode==='online'&&net.role==='guest')netSend({type:'act',action:'charge_off'});else endCharge(0)});
 function bindTouch(){const joy=$('joystick'),stick=$('joystickStick');function joyMove(e){const r=joy.getBoundingClientRect(),c={x:r.left+r.width/2,y:r.top+r.height/2},dx=e.clientX-c.x,dy=e.clientY-c.y,n=Math.max(1,Math.hypot(dx,dy)),scale=Math.min(1,n/43);touch.dx=dx/n*scale;touch.dy=dy/n*scale;stick.style.transform=`translate(${touch.dx*30}px,${touch.dy*30}px)`}
  joy.addEventListener('pointerdown',e=>{e.preventDefault();touch.joystickId=e.pointerId;joy.setPointerCapture(e.pointerId);joyMove(e)});joy.addEventListener('pointermove',e=>{if(e.pointerId===touch.joystickId){e.preventDefault();joyMove(e)}});const release=e=>{if(e.pointerId===touch.joystickId){touch.joystickId=null;touch.dx=touch.dy=0;stick.style.transform='translate(0,0)'}};joy.addEventListener('pointerup',release);joy.addEventListener('pointercancel',release);
  for(const [id,down,up] of [['touchThrow',()=>touchAct('charge_on'),()=>touchAct('charge_off')],['touchDash',()=>touchAct('dash')],['touchParry',()=>touchAct('parry')],['touchSkill',()=>touchAct('card')]]){const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);down()});if(up){el.addEventListener('pointerup',e=>{e.preventDefault();up()});el.addEventListener('pointercancel',up)}}
@@ -276,22 +281,41 @@ function appendChatItem(item){
  if(!item||typeof item.text!=='string')return;
  net.chatHistory.push(item);if(net.chatHistory.length>40)net.chatHistory.shift();
  renderChat();
- if(game&&$('gameChatPanel').classList.contains('hidden')&&item.slot!==net.slot){net.chatUnread++;$('chatUnread').textContent=String(net.chatUnread);$('chatUnread').classList.remove('hidden');}
 }
-function renderChat(){for(const containerId of ['lobbyChatMessages','gameChatMessages']){
- const box=$(containerId);box.replaceChildren();
- if(!net.chatHistory.length){const empty=document.createElement('p');empty.className='chat-empty';empty.textContent='Henüz mesaj yok. İlk mesajı sen gönder!';box.append(empty);continue;}
- for(const msg of net.chatHistory){const row=document.createElement('div');row.className='chat-line'+(msg.slot===1?' from-guest':'');
-  const meta=document.createElement('div');meta.className='chat-meta';
-  const by=document.createElement('b');by.textContent=String(msg.name||'Oyuncu').slice(0,14);
+function renderChat(){
+ const lobby=$('lobbyChatMessages');lobby.replaceChildren();
+ if(!net.chatHistory.length){const empty=document.createElement('p');empty.className='chat-empty';empty.textContent='Henüz mesaj yok. İlk mesajı sen gönder!';lobby.append(empty);}
+ for(const msg of net.chatHistory){
+  const row=document.createElement('div');row.className='chat-line'+(msg.slot===1?' from-guest':'');
+  const meta=document.createElement('div');meta.className='chat-meta';const by=document.createElement('b');by.textContent=String(msg.name||'Oyuncu').slice(0,14);
   const time=document.createElement('time');const date=new Date(Number(msg.at)||Date.now());time.textContent=Number.isNaN(date.getTime())?'':date.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
   const line=document.createElement('span');line.textContent=msg.text;
-  meta.append(by,time);row.append(meta,line);box.append(row);
- }box.scrollTop=box.scrollHeight;
-}}
+  meta.append(by,time);row.append(meta,line);lobby.append(row);
+ }
+ lobby.scrollTop=lobby.scrollHeight;
+ const feed=$('gameChatMessages');feed.replaceChildren();
+ // Show only the last five messages, with no large floating chat window.
+ for(const msg of net.chatHistory.slice(-5)){
+  const row=document.createElement('div');row.className='arena-chat-line'+(msg.slot===1?' from-guest':'');
+  const name=document.createElement('strong');name.textContent=String(msg.name||'Oyuncu').slice(0,14)+':';
+  const value=document.createElement('span');value.textContent=' '+msg.text;
+  row.append(name,value);feed.append(row);
+ }
+}
 function sendChat(input){const msg=input.value.trim();if(!msg||!net.connected||!net.code)return;netSend({type:'chat',text:msg.slice(0,180)});input.value='';}
-function closeGameChat(){$('gameChatPanel').classList.add('hidden');$('chatToggle').setAttribute('aria-expanded','false');}
-function toggleGameChat(){const panel=$('gameChatPanel'),open=panel.classList.toggle('hidden')===false;$('chatToggle').setAttribute('aria-expanded',String(open));if(open){net.chatUnread=0;$('chatUnread').classList.add('hidden');$('gameChatInput').focus();}}
+function isGameChatActive(){return !$('gameChatForm').classList.contains('hidden');}
+function closeGameChat(){
+ $('gameChatForm').classList.add('hidden');$('chatToggle').setAttribute('aria-expanded','false');
+ if(document.activeElement===$('gameChatInput'))$('gameChatInput').blur();keys=Object.create(null);
+}
+function openGameChat(){
+ if(options.mode!=='online'||!game)return;
+ keys=Object.create(null);touch.dx=touch.dy=0;mouseThrowHeld=false;
+ if(net.role==='guest'){netSend({type:'input',x:0,y:0,aimX:0,aimY:0,aimActive:false});netSend({type:'act',action:'charge_off'});}
+ else if(net.role==='host'&&game.players[0]){game.players[0].charging=false;game.players[0].charge=0;}
+ $('gameChatForm').classList.remove('hidden');$('chatToggle').setAttribute('aria-expanded','true');$('gameChatInput').focus();
+}
+function toggleGameChat(){if(isGameChatActive())closeGameChat();else openGameChat();}
 function pauseMessage(reason){showOverlay('⏸️ MAÇ DURAKLATILDI','⏸️','OYUN BEKLEMEDE',reason,[{label:'ANA MENÜ',secondary:true,action:returnMenu}]);}
 function pauseHostWhenAway(){
  if(!game||options.mode!=='online'||net.role!=='host'||net.focusPaused||['finished','ready'].includes(game.phase))return;
@@ -328,7 +352,7 @@ function connectRoom(request){
    if(net.code){net.retry=setTimeout(()=>connectRoom({type:'join',code:net.code,token:net.token,name:options.nickname}),2000);}else{roomMessage('Sunucuya erişilemedi. Yeniden denemek için oda kur/katıl düğmesine bas.',true);}
  };
 }
-function leaveOnline(){net.closing=true;if(net.retry){clearTimeout(net.retry);net.retry=null;}netSend({type:'leave'});if(net.ws){net.ws.onclose=null;net.ws.close();net.ws=null;}if(net.code)try{sessionStorage.removeItem('bomba-room-'+net.code)}catch{}net.role=null;net.slot=null;net.code=null;net.token=null;net.players=[];net.connected=false;net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};net.hostAway=false;net.focusPaused=false;net.chatUnread=0;net.chatHistory=[];renderChat();$('chatUnread').classList.add('hidden');closeGameChat();$('roomReady').classList.add('hidden');history.replaceState(null,'',location.pathname);renderRules();}
+function leaveOnline(){net.closing=true;if(net.retry){clearTimeout(net.retry);net.retry=null;}netSend({type:'leave'});if(net.ws){net.ws.onclose=null;net.ws.close();net.ws=null;}if(net.code)try{sessionStorage.removeItem('bomba-room-'+net.code)}catch{}net.role=null;net.slot=null;net.code=null;net.token=null;net.players=[];net.connected=false;net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};net.hostAway=false;net.focusPaused=false;net.matchId=0;net.chatUnread=0;net.chatHistory=[];renderChat();$('gameChatPanel').classList.add('hidden');$('chatUnread').classList.add('hidden');closeGameChat();$('roomReady').classList.add('hidden');history.replaceState(null,'',location.pathname);renderRules();}
 function updateRoomPanel(){
  if(!net.code)return;
  $('roomReady').classList.remove('hidden');$('roomCode').textContent=net.code;
@@ -342,7 +366,7 @@ function updateRoomPanel(){
 function onNetMessage(d){
  if(d.type==='error'){roomMessage(d.message||'Oda hatası.',true);return;}
  if(d.type==='joined'){
-  net.code=d.code;net.slot=d.slot;net.role=d.slot===0?'host':'guest';net.token=d.token;net.players=d.players||[];net.connected=true;net.chatHistory=Array.isArray(d.chatHistory)?d.chatHistory.slice(-40):[];net.chatUnread=0;$('chatUnread').classList.add('hidden');renderChat();options.rules=safeRules(d.rules);renderRules();
+  net.code=d.code;net.slot=d.slot;net.role=d.slot===0?'host':'guest';net.token=d.token;net.players=d.players||[];net.connected=true;net.chatHistory=Array.isArray(d.chatHistory)?d.chatHistory.slice(-40):[];net.chatUnread=0;net.matchId=Number.isInteger(d.matchId)?d.matchId:0;$('chatUnread').classList.add('hidden');renderChat();options.rules=safeRules(d.rules);renderRules();
   try{sessionStorage.setItem('bomba-room-'+net.code,net.token)}catch{}
   history.replaceState(null,'',location.pathname+'?room='+net.code);updateRoomPanel();
   if(d.reconnected&&game){hideOverlay();if(net.role==='host'&&!document.hidden)netSend({type:'host_pause',paused:false});}
@@ -364,7 +388,7 @@ function onNetMessage(d){
  }
  if(d.type==='start'){
   if(options.mode!=='online')return;
-  net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};newGame();roomMessage('Maç başladı!');return;
+  if(!Number.isInteger(d.matchId)||d.matchId<=net.matchId)return;net.matchId=d.matchId;net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};newGame();roomMessage(d.rematch?'Rövanş başladı!':'Maç başladı!');return;
  }
  if(d.type==='input'&&net.role==='host'){
   net.remote={x:d.x||0,y:d.y||0,aimX:d.aimX||0,aimY:d.aimY||0,aimActive:!!d.aimActive};return;
@@ -375,7 +399,7 @@ function onNetMessage(d){
   else if(d.action==='dash')useDash(1);else if(d.action==='parry')useParry(1);else if(d.action==='card')useCard(1);return;
  }
  if(d.type==='state'&&net.role==='guest'){
-  if(!d.state?.players||!d.state?.map)return;
+  if(!d.state?.players||!d.state?.map||d.matchId!==net.matchId)return;
   if(Number.isFinite(d.seq)&&d.seq<=net.seq)return;
   if(Number.isFinite(d.seq))net.seq=d.seq;
   if(!game)newGame();
@@ -401,7 +425,7 @@ function onNetMessage(d){
 }
 function sendGuestInput(){if(!game||!net.connected||net.role!=='guest')return;
  let x=+(!!keys.KeyD)-+(!!keys.KeyA),y=+(!!keys.KeyS)-+(!!keys.KeyW);
- if(touch.joystickId!==null){x=touch.dx;y=touch.dy;}
+ if(touch.joystickId!==null){x=touch.dx;y=touch.dy;}if(isGameChatActive()){x=0;y=0;}
  const v=unitOrZero(x,y),p=game.players[1];
  netSend({type:'input',x:v.x,y:v.y,aimX:mouse.active?mouse.x:game.players[0].x,aimY:mouse.active?mouse.y:game.players[0].y,aimActive:mouse.active});
 }
@@ -429,7 +453,7 @@ function init(){
  $('copyInvite').addEventListener('click',async()=>{const url=$('roomLink').value;try{await navigator.clipboard.writeText(url);roomMessage('Davet bağlantısı kopyalandı! ✓')}catch{const el=$('roomLink');el.select();document.execCommand('copy');roomMessage('Bağlantı seçildi; Ctrl+C ile kopyala.')}});
  $('hostStart').addEventListener('click',()=>{if(net.role==='host'&&net.players.length===2&&net.players[1].online)netSend({type:'start'})});
  $('leaveRoom').addEventListener('click',()=>{leaveOnline();roomMessage('Odadan ayrıldın. Yeni oda için harita ve mod seçebilirsin.');$('roomReady').classList.add('hidden')});
- for(const [form,input] of [['lobbyChatForm','lobbyChatInput'],['gameChatForm','gameChatInput']])$(form).addEventListener('submit',e=>{e.preventDefault();sendChat($(input))});
+ $('lobbyChatForm').addEventListener('submit',e=>{e.preventDefault();sendChat($('lobbyChatInput'));});$('gameChatForm').addEventListener('submit',e=>{e.preventDefault();sendChat($('gameChatInput'));closeGameChat();});
  $('chatToggle').addEventListener('click',toggleGameChat);$('chatClose').addEventListener('click',closeGameChat);
  window.addEventListener('focus',resumeHostWhenBack);
  document.addEventListener('visibilitychange',()=>{if(options.mode!=='online'||net.role!=='host')return;if(document.hidden)pauseHostWhenAway();else if(document.hasFocus())resumeHostWhenBack();});

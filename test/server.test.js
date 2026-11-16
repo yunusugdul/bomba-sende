@@ -15,8 +15,8 @@ test('create > join > start > state/input/actions > reconnect > leave', async()=
  const host=await openClient();const made=waitMessage(host,d=>d.type==='joined');send(host,{type:'create',name:'KURUCU'});const created=await made;
  assert.equal(created.slot,0);assert.match(created.code,/^[A-Z2-9]{6}$/);
  const guest=await openClient();const joined=waitMessage(guest,d=>d.type==='joined');send(guest,{type:'join',code:created.code,name:'MİSAFİR'});const j=await joined;assert.equal(j.slot,1);
- const startHost=waitMessage(host,d=>d.type==='start'),startGuest=waitMessage(guest,d=>d.type==='start');send(host,{type:'start'});await Promise.all([startHost,startGuest]);
- const snap=waitMessage(guest,d=>d.type==='state');send(host,{type:'state',state:{players:[{name:'a'},{name:'b'}],score:[0,0],round:1}});assert.equal((await snap).state.round,1);
+ const startHost=waitMessage(host,d=>d.type==='start'),startGuest=waitMessage(guest,d=>d.type==='start');send(host,{type:'start'});const [firstStart,guestStart]=await Promise.all([startHost,startGuest]);assert.equal(firstStart.matchId,guestStart.matchId);
+ const snap=waitMessage(guest,d=>d.type==='state');send(host,{type:'state',matchId:firstStart.matchId,state:{players:[{name:'a'},{name:'b'}],score:[0,0],round:1}});assert.equal((await snap).state.round,1);
  const incoming=waitMessage(host,d=>d.type==='input');send(guest,{type:'input',x:999,y:-999,aimX:3,aimY:4,aimActive:true});const r=await incoming;assert.equal(r.x,1);assert.equal(r.y,-1);
  const act=waitMessage(host,d=>d.type==='act');send(guest,{type:'act',action:'dash'});assert.equal((await act).action,'dash');
  const dup=await openClient();const rejoin=waitMessage(dup,d=>d.type==='joined');send(dup,{type:'join',code:created.code,token:j.token});assert.equal((await rejoin).reconnected,true);
