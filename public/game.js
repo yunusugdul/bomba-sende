@@ -1,6 +1,6 @@
 
 'use strict';
-// BOMBA SENDE! V7.0 — offline, no dependencies. Fixed logical arena: 1000 x 562.
+// BOMBA SENDE! V8.0 — offline, no dependencies. Fixed logical arena: 1000 x 562.
 (() => {
 const W=1000,H=562,R=21, TAU=Math.PI*2;
 const $=id=>document.getElementById(id);
@@ -51,6 +51,23 @@ function remotePresentation(now){
 }
 
 let game=null, animLast=0, lastHud=0, keys=Object.create(null), muted=false,audio=null;
+const CHAT_FADE_MS=3000;
+let chatFadeTimer=null;
+function showChatTemporarily(){
+ const panel=$('gameChatPanel');if(!panel)return;
+ if(chatFadeTimer!==null){clearTimeout(chatFadeTimer);chatFadeTimer=null;}
+ panel.classList.remove('chat-idle');
+ if(document.fullscreenElement&&options.mode==='online'&&game&&!isGameChatActive()){
+  chatFadeTimer=setTimeout(()=>{
+   if(document.fullscreenElement&&options.mode==='online'&&game&&!isGameChatActive())panel.classList.add('chat-idle');
+   chatFadeTimer=null;
+  },CHAT_FADE_MS);
+ }
+}
+function resetChatVisibility(){
+ if(chatFadeTimer!==null){clearTimeout(chatFadeTimer);chatFadeTimer=null;}
+ $('gameChatPanel').classList.remove('chat-idle');
+}
 let mouse={x:760,y:280,active:false};
 let touch={dx:0,dy:0,joystickId:null,throwDown:false};
 let particles=[],rings=[],shakes=0,globalTime=0,toastTimer=0,calloutTimer=0;
@@ -67,7 +84,7 @@ function newGame(){particles=[];rings=[];shakes=0;keys=Object.create(null);touch
  $('player0Name').textContent=game.players[0].name;$('player1Name').textContent=game.players[1].name;requestAnimationFrame(layoutArena);
  $('modePill').textContent=options.mode==='online'?'🌐 '+net.code+' • '+(['upgrades','chaos','cards','panic'].some(k=>game.rules[k]!==PRESETS[game.rules.preset][k])?'ÖZEL KURALLAR':({fusion:'HEPSİ BİR ARADA',evolution:'BOMBA EVRİMİ',party:'ÇILGIN KAOS',classic:'KLASİK'}[game.rules.preset]||'ÖZEL')):options.mode==='bot'?'🤖 '+({easy:'RAHAT',normal:'DENGELİ',hard:'ÇILGIN'}[options.difficulty]):'👥 AYNI KLAVYE';
  $('controlsHint').innerHTML=options.mode!=='local'?'<b>WASD</b> hareket · <b>SOL TIK</b> şarj/fırlat · <b>SPACE</b> atıl · <b>E</b> savun · <b>Q</b> kart':'<b>P1:</b> WASD, F atış, G atıl, H savun, R kart &nbsp; <b>P2:</b> oklar, L atış, K atıl, J savun, I kart';
- $('keyThrow').textContent=options.mode!=='local'?'SOL TIK':'F';$('keyDash').textContent=options.mode!=='local'?'SPACE':'G';$('keyParry').textContent=options.mode!=='local'?'E':'H';$('keyPower').textContent=options.mode!=='local'?'Q':'R';$('pauseBtn').classList.toggle('hidden',options.mode==='online');$('chatToggle').classList.toggle('hidden',options.mode!=='online');$('gameChatPanel').classList.toggle('hidden',options.mode!=='online');closeGameChat();renderChat();
+ $('keyThrow').textContent=options.mode!=='local'?'SOL TIK':'F';$('keyDash').textContent=options.mode!=='local'?'SPACE':'G';$('keyParry').textContent=options.mode!=='local'?'E':'H';$('keyPower').textContent=options.mode!=='local'?'Q':'R';$('pauseBtn').classList.toggle('hidden',options.mode==='online');$('chatToggle').classList.toggle('hidden',options.mode!=='online');$('gameChatPanel').classList.toggle('hidden',options.mode!=='online');closeGameChat();renderChat();showChatTemporarily();
  const touchDevice=(navigator.maxTouchPoints>0||matchMedia('(pointer:coarse)').matches);if(touchDevice&&$('touchControls').parentElement!==$('gameScreen'))$('gameScreen').append($('touchControls'));$('touchControls').style.display=options.mode!=='local'&&touchDevice?'block':'none';if(options.mode!=='local'&&touchDevice){$('keyThrow').textContent='💣';$('keyDash').textContent='➚';$('keyParry').textContent='⛨';$('keyPower').textContent='✦';$('controlsHint').textContent='Sol joystick ile hareket • FIRLAT basılı tut/bırak • ATIL kaç • SAVUN karşıla • KART kullan';}
  if(options.mode==='online'){net.focusPaused=false;startRound();game.phase='countdown';game.phaseTime=3.15;hideOverlay();updateHUD();return;}
  startRound();showOverlay('MAÇ BAŞLIYOR','🎯','YENİ KURALLAR, YENİ KAOS','Atış tuşuna basılı tut, nişan al ve bırak. Gelen bombayı savunmayla geri sektir!', [{label:'HAZIRIM, BAŞLAT →',action:()=>{snd('ready');game.phase='countdown';game.phaseTime=3.2;hideOverlay()}}]);updateHUD()}
@@ -75,7 +92,7 @@ function startRound(){const g=game,nextHolder=g.round===0?Math.floor(rand(0,2)):
  g.players.forEach((p,i)=>{p.x=i?850:150;p.y=281;p.vx=p.vy=p.speed=0;p.face={x:i?-1:1,y:0};p.aim={x:i?-1:1,y:0};p.charging=false;p.charge=0;p.dashCD=0;p.dashTime=0;p.parryCD=0;p.parryTime=0;p.shieldTime=0;p.shieldUsed=false;p.stun=0;p.portalCD=0;p.card=null;p.aiThink=0;p.aiDecision=null});$('mapName').textContent=g.map.name;hideOverlay()}
 function showOverlay(eyebrow,icon,title,description,actions=[]){$('overlayEyebrow').textContent=eyebrow;$('overlayIcon').textContent=icon;$('overlayTitle').textContent=title;$('overlayDesc').textContent=description;const div=$('overlayFoot');div.replaceChildren();for(const a of actions){const b=document.createElement('button');b.textContent=a.label;if(a.secondary)b.classList.add('secondary-btn');b.addEventListener('click',()=>{snd('click');a.action()});div.appendChild(b)}$('overlay').classList.remove('hidden')}
 function hideOverlay(){$('overlay').classList.add('hidden')}
-function returnMenu(){if(options.mode==='online')leaveOnline();closeGameChat();$('gameChatPanel').classList.add('hidden');game=null;keys=Object.create(null);document.body.classList.remove('is-playing');$('gameScreen').classList.add('hidden');$('landing').classList.remove('hidden');hideOverlay();$('eventCallout').classList.add('hidden');} 
+function returnMenu(){resetChatVisibility();if(options.mode==='online')leaveOnline();closeGameChat();$('gameChatPanel').classList.add('hidden');game=null;keys=Object.create(null);document.body.classList.remove('is-playing');$('gameScreen').classList.add('hidden');$('landing').classList.remove('hidden');hideOverlay();$('eventCallout').classList.add('hidden');} 
 function pauseGame(){if(options.mode==='online')return;if(!game)return;if(game.phase==='paused'){game.phase=game.pausedFrom;hideOverlay();return}if(!['active','countdown'].includes(game.phase))return;game.pausedFrom=game.phase;game.phase='paused';showOverlay('MOLA ZAMANI','⏸️','OYUN DURAKLATILDI','Hazır olduğunda kaldığın yerden devam et.',[{label:'DEVAM ET →',action:pauseGame},{label:'ANA MENÜ',secondary:true,action:returnMenu}])}
 function showHelp(){$('infoDialog').classList.remove('hidden');$('infoDialog').setAttribute('aria-hidden','false');$('infoClose').focus();}
 function closeHelp(){$('infoDialog').classList.add('hidden');$('infoDialog').setAttribute('aria-hidden','true');$('helpBtn').focus();}
@@ -280,14 +297,14 @@ function canOnline(){if(location.protocol!=='http:'&&location.protocol!=='https:
 function appendChatItem(item){
  if(!item||typeof item.text!=='string')return;
  net.chatHistory.push(item);if(net.chatHistory.length>40)net.chatHistory.shift();
- renderChat();
+ renderChat();showChatTemporarily();
 }
 function renderChat(){
  const lobby=$('lobbyChatMessages');lobby.replaceChildren();
  if(!net.chatHistory.length){const empty=document.createElement('p');empty.className='chat-empty';empty.textContent='Henüz mesaj yok. İlk mesajı sen gönder!';lobby.append(empty);}
  for(const msg of net.chatHistory){
-  const row=document.createElement('div');row.className='chat-line'+(msg.slot===1?' from-guest':'');
-  const meta=document.createElement('div');meta.className='chat-meta';const by=document.createElement('b');by.textContent=String(msg.name||'Oyuncu').slice(0,14);
+  const row=document.createElement('div');row.className='chat-line'+(msg.slot===net.slot?' from-self':' from-other');
+  const meta=document.createElement('div');meta.className='chat-meta';const by=document.createElement('b');by.textContent=msg.slot===net.slot?'Sen':'O';
   const time=document.createElement('time');const date=new Date(Number(msg.at)||Date.now());time.textContent=Number.isNaN(date.getTime())?'':date.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
   const line=document.createElement('span');line.textContent=msg.text;
   meta.append(by,time);row.append(meta,line);lobby.append(row);
@@ -296,8 +313,8 @@ function renderChat(){
  const feed=$('gameChatMessages');feed.replaceChildren();
  // Show only the last five messages, with no large floating chat window.
  for(const msg of net.chatHistory.slice(-5)){
-  const row=document.createElement('div');row.className='arena-chat-line'+(msg.slot===1?' from-guest':'');
-  const name=document.createElement('strong');name.textContent=String(msg.name||'Oyuncu').slice(0,14)+':';
+  const row=document.createElement('div');row.className='arena-chat-line'+(msg.slot===net.slot?' from-self':' from-other');
+  const name=document.createElement('strong');name.textContent=(msg.slot===net.slot?'Sen':'O')+':';
   const value=document.createElement('span');value.textContent=' '+msg.text;
   row.append(name,value);feed.append(row);
  }
@@ -306,6 +323,7 @@ function sendChat(input){const msg=input.value.trim();if(!msg||!net.connected||!
 function isGameChatActive(){return !$('gameChatForm').classList.contains('hidden');}
 function closeGameChat(){
  $('gameChatForm').classList.add('hidden');$('chatToggle').setAttribute('aria-expanded','false');
+ showChatTemporarily();
  if(document.activeElement===$('gameChatInput'))$('gameChatInput').blur();keys=Object.create(null);
 }
 function openGameChat(){
@@ -313,7 +331,7 @@ function openGameChat(){
  keys=Object.create(null);touch.dx=touch.dy=0;mouseThrowHeld=false;
  if(net.role==='guest'){netSend({type:'input',x:0,y:0,aimX:0,aimY:0,aimActive:false});netSend({type:'act',action:'charge_off'});}
  else if(net.role==='host'&&game.players[0]){game.players[0].charging=false;game.players[0].charge=0;}
- $('gameChatForm').classList.remove('hidden');$('chatToggle').setAttribute('aria-expanded','true');$('gameChatInput').focus();
+ $('gameChatForm').classList.remove('hidden');$('chatToggle').setAttribute('aria-expanded','true');showChatTemporarily();$('gameChatInput').focus();
 }
 function toggleGameChat(){if(isGameChatActive())closeGameChat();else openGameChat();}
 function pauseMessage(reason){showOverlay('⏸️ MAÇ DURAKLATILDI','⏸️','OYUN BEKLEMEDE',reason,[{label:'ANA MENÜ',secondary:true,action:returnMenu}]);}
@@ -352,7 +370,7 @@ function connectRoom(request){
    if(net.code){net.retry=setTimeout(()=>connectRoom({type:'join',code:net.code,token:net.token,name:options.nickname}),2000);}else{roomMessage('Sunucuya erişilemedi. Yeniden denemek için oda kur/katıl düğmesine bas.',true);}
  };
 }
-function leaveOnline(){net.closing=true;if(net.retry){clearTimeout(net.retry);net.retry=null;}netSend({type:'leave'});if(net.ws){net.ws.onclose=null;net.ws.close();net.ws=null;}if(net.code)try{sessionStorage.removeItem('bomba-room-'+net.code)}catch{}net.role=null;net.slot=null;net.code=null;net.token=null;net.players=[];net.connected=false;net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};net.hostAway=false;net.focusPaused=false;net.matchId=0;net.chatUnread=0;net.chatHistory=[];renderChat();$('gameChatPanel').classList.add('hidden');$('chatUnread').classList.add('hidden');closeGameChat();$('roomReady').classList.add('hidden');history.replaceState(null,'',location.pathname);renderRules();}
+function leaveOnline(){resetChatVisibility();net.closing=true;if(net.retry){clearTimeout(net.retry);net.retry=null;}netSend({type:'leave'});if(net.ws){net.ws.onclose=null;net.ws.close();net.ws=null;}if(net.code)try{sessionStorage.removeItem('bomba-room-'+net.code)}catch{}net.role=null;net.slot=null;net.code=null;net.token=null;net.players=[];net.connected=false;net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};net.hostAway=false;net.focusPaused=false;net.matchId=0;net.chatUnread=0;net.chatHistory=[];renderChat();$('gameChatPanel').classList.add('hidden');$('chatUnread').classList.add('hidden');closeGameChat();$('roomReady').classList.add('hidden');history.replaceState(null,'',location.pathname);renderRules();}
 function updateRoomPanel(){
  if(!net.code)return;
  $('roomReady').classList.remove('hidden');$('roomCode').textContent=net.code;
@@ -366,7 +384,7 @@ function updateRoomPanel(){
 function onNetMessage(d){
  if(d.type==='error'){roomMessage(d.message||'Oda hatası.',true);return;}
  if(d.type==='joined'){
-  net.code=d.code;net.slot=d.slot;net.role=d.slot===0?'host':'guest';net.token=d.token;net.players=d.players||[];net.connected=true;net.chatHistory=Array.isArray(d.chatHistory)?d.chatHistory.slice(-40):[];net.chatUnread=0;net.matchId=Number.isInteger(d.matchId)?d.matchId:0;$('chatUnread').classList.add('hidden');renderChat();options.rules=safeRules(d.rules);renderRules();
+  net.code=d.code;net.slot=d.slot;net.role=d.slot===0?'host':'guest';net.token=d.token;net.players=d.players||[];net.connected=true;net.chatHistory=Array.isArray(d.chatHistory)?d.chatHistory.slice(-40):[];net.chatUnread=0;net.matchId=Number.isInteger(d.matchId)?d.matchId:0;$('chatUnread').classList.add('hidden');renderChat();showChatTemporarily();options.rules=safeRules(d.rules);renderRules();
   try{sessionStorage.setItem('bomba-room-'+net.code,net.token)}catch{}
   history.replaceState(null,'',location.pathname+'?room='+net.code);updateRoomPanel();
   if(d.reconnected&&game){hideOverlay();if(net.role==='host'&&!document.hidden)netSend({type:'host_pause',paused:false});}
@@ -433,11 +451,18 @@ function touchAct(action){if(options.mode==='online'&&net.role==='guest'){netSen
  const id=0;if(action==='charge_on')beginCharge(id);else if(action==='charge_off')endCharge(id);else if(action==='dash')useDash(id);else if(action==='parry')useParry(id);else if(action==='card')useCard(id);
 }
 function layoutArena(){if(!document.body.classList.contains('is-playing'))return;
- const screen=$('gameScreen'),shell=screen.querySelector('.arena-shell'),winH=window.visualViewport?.height||window.innerHeight;
- const hBlocks=['.game-nav','.scoreline','.fuse-container','.bottom-hud'].reduce((sum,selector)=>sum+(screen.querySelector(selector)?.getBoundingClientRect().height||0),0)+(screen.querySelector(':scope > .touch-controls')?.getBoundingClientRect().height||0);
+ const screen=$('gameScreen'),shell=screen.querySelector('.arena-shell'),chat=$('gameChatPanel');
+ const winH=window.visualViewport?.height||window.innerHeight;
+ const hBlocks=['.game-nav','.scoreline','.fuse-container','.bottom-hud'].reduce((sum,selector)=>sum+(screen.querySelector(selector)?.getBoundingClientRect().height||0),0);
  const screenStyle=getComputedStyle(screen),pad=parseFloat(screenStyle.paddingTop)+parseFloat(screenStyle.paddingBottom),gap=parseFloat(screenStyle.rowGap||screenStyle.gap)||7;
- const height=Math.max(100,winH-pad-hBlocks-gap*4-6),width=Math.min(screen.clientWidth-parseFloat(screenStyle.paddingLeft)-parseFloat(screenStyle.paddingRight)-8,height*W/H);
- shell.style.width=Math.max(100,width)+'px';shell.style.height=Math.max(60,width*H/W)+'px';
+ const availableW=screen.clientWidth-parseFloat(screenStyle.paddingLeft)-parseFloat(screenStyle.paddingRight)-8;
+ const onlineChat=options.mode==='online'&&!chat.classList.contains('hidden'),stacked=matchMedia('(max-width:800px)').matches;
+ const stageGap=onlineChat?(stacked?6:14):0;
+ const sideW=onlineChat&&!stacked?Math.min(236,Math.max(180,availableW*.185)):0;
+ const reservedH=onlineChat&&stacked?(chat.getBoundingClientRect().height||82)+stageGap:0;
+ const availableH=Math.max(100,winH-pad-hBlocks-gap*4-reservedH-6);
+ const width=Math.max(100,Math.min(availableW-sideW-stageGap,availableH*W/H));
+ shell.style.width=width+'px';shell.style.height=Math.max(60,width*H/W)+'px';
 }
 function readRules(){const p=$('rulesPreset').value;const r={preset:p,arena:$('rulesArena').value,rounds:Number($('rulesRounds').value),upgradePersistence:$('rulesPersistence').value};for(const f of ['upgrades','chaos','cards','panic'])r[f]=$('rules'+f[0].toUpperCase()+f.slice(1)).checked;options.rules=safeRules(r);renderRules();}
 function renderRules(){const r=options.rules;$('rulesPreset').value=r.preset;$('rulesArena').value=r.arena;$('rulesRounds').value=String(r.rounds);$('rulesPersistence').value=r.upgradePersistence;for(const k of ['upgrades','chaos','cards','panic'])$('rules'+k[0].toUpperCase()+k.slice(1)).checked=r[k];$('selectedRules').textContent=`${(['upgrades','chaos','cards','panic'].some(k=>r[k]!==PRESETS[r.preset][k])?'🎛️ Özel Kurallar':({fusion:'🔥 Hepsi Bir Arada',evolution:'💣 Bomba Evrimi',party:'⚡ Çılgın Kaos',classic:'🎯 Klasik Düello'}[r.preset]))} • ${r.rounds} tur • ${r.arena==='cycle'?'Dönen arenalar':r.arena==='random'?'Rastgele arenalar':MAPS[Number(r.arena)].name} • ${r.upgradePersistence==='round'?'Güçler her tur sıfırlanır':'Güçler maç boyu birikir'}`;$('roomRulePreview').textContent=$('selectedRules').textContent;const locked=options.mode==='online'&&net.code!==null;$('rulesEditor').querySelectorAll('select,input').forEach(el=>el.disabled=locked);}
@@ -462,7 +487,7 @@ function init(){
  $('pauseBtn').addEventListener('click',pauseGame);
  $('fullscreenBtn').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{alertToast('Tam ekran tarayıcın tarafından engellendi.')}layoutArena();});
  $('muteTop').addEventListener('click',()=>{muted=!muted;$('muteTop').textContent=muted?'🔇':'🔊'});
- window.addEventListener('resize',layoutArena);document.addEventListener('fullscreenchange',()=>setTimeout(layoutArena,80));bindTouch();
+ window.addEventListener('resize',layoutArena);document.addEventListener('fullscreenchange',()=>{showChatTemporarily();setTimeout(layoutArena,80);});bindTouch();
  const invite=new URLSearchParams(location.search).get('room');
  if(invite){
   const code=invite.toUpperCase().replace(/[^A-Z2-9]/g,'').slice(0,6);
