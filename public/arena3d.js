@@ -15,7 +15,7 @@ export function createArena3D(inputCanvas) {
   const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.48;
+  renderer.toneMappingExposure = 1.20;
   const lowPower = matchMedia('(pointer:coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4;
   const pixelRatio=Math.min(window.devicePixelRatio||1,lowPower?1.05:1.4);
   renderer.setPixelRatio(pixelRatio);
@@ -28,11 +28,14 @@ export function createArena3D(inputCanvas) {
   scene.background = new THREE.Color('#0b0d20');
   scene.fog = new THREE.FogExp2('#0b0d20', .011);
   const camera = new THREE.OrthographicCamera(-22,22,12.4,-12.4,.1,170);
-  camera.position.set(0,30,35);
+  // High-angle orthographic framing restores almost the full 2D arena footprint.
+  // Keeping the same 1000 x 562 plane also preserves mouse raycast targeting.
+  const CAMERA_HEIGHT=56, CAMERA_DEPTH=16;
+  camera.position.set(0,CAMERA_HEIGHT,CAMERA_DEPTH);
   camera.lookAt(0,0,0);
-  const hemi = new THREE.HemisphereLight('#f0f9ff', '#3a2c55', 2.65);
+  const hemi = new THREE.HemisphereLight('#edf7ff', '#344052', 1.8);
   scene.add(hemi);
-  const key = new THREE.DirectionalLight('#fff9e7', 3.05);
+  const key = new THREE.DirectionalLight('#fff6e7', 2.4);
   key.position.set(-18,30,11);
   key.castShadow = true;
   key.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048);
@@ -42,9 +45,9 @@ export function createArena3D(inputCanvas) {
   key.shadow.bias = -.0003;
   key.shadow.normalBias = .018;
   scene.add(key);
-  const rim = new THREE.DirectionalLight('#b7a5ff', 1.9);
+  const rim = new THREE.DirectionalLight('#b7a5ff', 1.25);
   rim.position.set(18,15,-12); scene.add(rim);
-  const fill = new THREE.DirectionalLight('#a0dfff',1.05);
+  const fill = new THREE.DirectionalLight('#a0dfff',.80);
   fill.position.set(10,8,17);scene.add(fill);
 
   const stage = new THREE.Group(); scene.add(stage);
@@ -159,9 +162,9 @@ export function createArena3D(inputCanvas) {
   function makeHuman(hex,name,id) {
     const root = new THREE.Group(); scene.add(root);
     const model=new THREE.Group();root.add(model);
-    const suit=mat(id===0?'#d7ff39':'#ff57ae',{metalness:.04,roughness:.50,emissive:id===0?'#526800':'#770c44',emissiveIntensity:.24});
-    const suitDark=mat(id===0?'#357043':'#95325d',{metalness:.09,roughness:.56});
-    const skin=mat(id===0?'#ecb58d':'#dba17e',{roughness:.85,metalness:0});
+    const suit=mat(id===0?'#ddff47':'#ff5ac4',{metalness:.02,roughness:.54,emissive:id===0?'#a0d512':'#ee3189',emissiveIntensity:.64});
+    const suitDark=mat(id===0?'#3f9853':'#b5357b',{metalness:.06,roughness:.57,emissive:id===0?'#155424':'#63103e',emissiveIntensity:.22});
+    const skin=mat(id===0?'#f1bd98':'#edb08b',{roughness:.82,metalness:0});
     const hair=mat(id===0?'#242136':'#30253a',{roughness:.87,metalness:0});
     const bright=basic(hex,{toneMapped:false});
     // Humanoid: head, torso, both arms and legs - all narrower than the original collision diameter.
@@ -187,16 +190,16 @@ export function createArena3D(inputCanvas) {
     emblem.castShadow=false;
     const shadow=mesh(new THREE.CircleGeometry(.95,24),basic('#000000',{transparent:true,opacity:.26,depthWrite:false}),root,0,.01,0);
     shadow.rotation.x=-Math.PI/2; shadow.castShadow=false;
-    const a=ring(root,hex,1.12);a.position.y=.07;a.material.opacity=.9;
+    const a=ring(root,hex,1.12);a.position.y=.07;a.material.opacity=1;
     const baseDisc=mesh(new THREE.CylinderGeometry(.98,.98,.10,24),basic(hex,{toneMapped:false}),root,0,.035,0);
-    baseDisc.castShadow=false;baseDisc.material.transparent=true;baseDisc.material.opacity=.30;
+    baseDisc.castShadow=false;baseDisc.material.transparent=true;baseDisc.material.opacity=.47;
     const carry=ring(root,'#ffbd64',1.31);carry.position.y=.09;
     const defense=ring(root,'#72efff',1.55);defense.position.y=.17;
     const charge=ring(root,'#e3ff65',1.46);charge.position.y=.13;
     // High detail combat suit without changing the old 21px physical collision radius.
     const alloy=mat(id===0?'#293d3b':'#433048',{metalness:.68,roughness:.28});
     const trim=mat(id===0?'#c7ec52':'#ff87cc',{metalness:.48,roughness:.3,
-      emissive:id===0?'#8da521':'#ad2a66',emissiveIntensity:1.05});
+      emissive:id===0?'#aaff3d':'#ff48a9',emissiveIntensity:1.55});
     block(model,0,1.47,.44,.78,.47,.17,alloy);
     block(model,0,1.50,.54,.43,.09,.057,trim);
     for(const side of [-1,1]) {
@@ -251,7 +254,7 @@ export function createArena3D(inputCanvas) {
   const rimMat=mat('#8999b9',{metalness:.18,roughness:.43});
   const yellow=basic('#ffc248',{toneMapped:false});
   mesh(geometries.sphereFine,shellMat,bomb,0,0,0,[.59,.59,.59]);
-  mesh(geometries.sphere,basic('#e9f6ff',{toneMapped:false}),bomb,-.23,.24,.48,[.14,.08,.04]).castShadow=false;
+  // No flashing white highlight: the bomb has a matte black body and steady orange fuse.
   const topBand=mesh(new THREE.TorusGeometry(.52,.048,8,32),rimMat,bomb,0,.26,0);
   topBand.rotation.x=-Math.PI/2;
   const baseBand=mesh(new THREE.TorusGeometry(.51,.032,8,32),yellow,bomb,0,-.27,0);
@@ -270,14 +273,13 @@ export function createArena3D(inputCanvas) {
     new THREE.Vector3(.20,1.10,-.08)
   ]);
   mesh(new THREE.TubeGeometry(fusePath,14,.075,8,false),mat('#ceb38d',{roughness:.95,metalness:0}),bomb);
-  const hotWick=mesh(geometries.sphere,mat('#fff1a2',{emissive:'#ff9306',emissiveIntensity:5,
-    roughness:.38,metalness:0}),bomb,.20,1.10,-.08,[.09,.09,.09]);
+  const hotWick=mesh(geometries.sphere,basic('#ff9f28',{toneMapped:false}),bomb,.20,1.10,-.08,[.09,.09,.09]);
   hotWick.castShadow=false;
   const fuseHalo=new THREE.PointLight('#ff9a37',2.0,3,2);fuseHalo.position.set(.20,1.09,-.08);bomb.add(fuseHalo);
   const spark=hotWick;
   const fuseSparks=[];
   for(let i=0;i<5;i++){
-    const dot=mesh(geometries.crystal,basic('#ffe18b',{toneMapped:false}),bomb,.20,1.10,-.08,[.027,.055,.027]);
+    const dot=mesh(geometries.crystal,basic('#ff7a19',{toneMapped:false}),bomb,.20,1.10,-.08,[.020,.045,.020]);
     dot.castShadow=false;fuseSparks.push(dot);
   }
   // Gold warning seal on the camera-facing side of the shell.
@@ -422,7 +424,7 @@ export function createArena3D(inputCanvas) {
       const pipeline=new ec.EffectComposer(renderer);
       pipeline.setPixelRatio(pixelRatio);
       pipeline.addPass(new rp.RenderPass(scene,camera));
-      pipeline.addPass(new bp.UnrealBloomPass(new THREE.Vector2(1,1),.34,.38,.85));
+      pipeline.addPass(new bp.UnrealBloomPass(new THREE.Vector2(1,1),.22,.30,.92));
       pipeline.addPass(new op.OutputPass());
       pipeline.setSize(Math.max(1,cachedW),Math.max(1,cachedH));
       composer=pipeline;
@@ -463,20 +465,20 @@ export function createArena3D(inputCanvas) {
     const now=performance.now(),dt=Math.min(.07,(now-lastFrame)/1000);lastFrame=now;
     // Camera shake only changes presentation, never the targeting plane or simulation.
     const cameraJitter=shake>0?.055*Math.min(6,shake):0;
-    camera.position.set(Math.sin(t*41)*cameraJitter,30,35+Math.cos(t*35)*cameraJitter);
+    camera.position.set(Math.sin(t*41)*cameraJitter,CAMERA_HEIGHT,CAMERA_DEPTH+Math.cos(t*35)*cameraJitter);
     camera.lookAt(0,0,0);
     for(let i=0;i<2;i++)updateHuman(humans[i],g.players[i],g,t,dt);
     const bp=world(g.bomb.x,g.bomb.y,1.0+(g.bomb.mode==='flying'?.38:0));
     bomb.position.copy(bp);bomb.rotation.y=t*2;
     bomb.scale.setScalar(g.bomb.mode==='held'?.72:.93);
-    spark.scale.setScalar(1+.17*Math.sin(t*23));
+    spark.scale.setScalar(1); // the fuse remains steady; no white pulse
     for(let i=0;i<fuseSparks.length;i++){
       const a=t*18+i*6.283185307/5,r=.12+.06*Math.sin(t*11+i);
       const q=fuseSparks[i];q.position.set(.20+Math.cos(a)*r,1.11+Math.abs(Math.sin(a*1.4))*.12,-.08+Math.sin(a)*r);
-      q.scale.setScalar(.035+.04*(.5+.5*Math.sin(t*13+i)));q.rotation.y=t*9+i;
+      q.scale.setScalar(.025);q.rotation.y=t*9+i;
     }
-    blastLight.intensity=.7+Math.sin(t*19)*.22;
-    fuseHalo.intensity=.9+Math.sin(t*22)*.3;
+    blastLight.intensity=.55;
+    fuseHalo.intensity=.65;
     for(let i=0;i<trail.length;i++){
       const p=g.bomb.trail?.[i],o=trail[i];o.visible=!!p&&g.bomb.mode==='flying';
       if(o.visible){o.position.copy(world(p.x,p.y,.58));o.scale.setScalar(clamp(p.t/.32,.03,1)*.25);o.material.opacity=clamp(p.t/.32,0,.75);}
