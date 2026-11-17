@@ -247,55 +247,80 @@ export function createArena3D(inputCanvas) {
   }
   // Recognizable hand-fused bomb: layered forged metal, warning badge, cap and live wick.
   const bomb=new THREE.Group();scene.add(bomb);
-  const shellMat=mat('#111720',{metalness:.67,roughness:.3});
-  const rimMat=mat('#858c98',{metalness:.82,roughness:.22});
-  const yellow=mat('#f3ad42',{metalness:.32,roughness:.3,emissive:'#71420c',emissiveIntensity:.5});
-  mesh(geometries.sphereFine,shellMat,bomb,0,0,0,[.67,.67,.67]);
-  const topBand=mesh(new THREE.TorusGeometry(.60,.066,8,36),rimMat,bomb,0,.26,0);
+  const shellMat=basic('#141620',{toneMapped:false});
+  const rimMat=mat('#8999b9',{metalness:.18,roughness:.43});
+  const yellow=basic('#ffc248',{toneMapped:false});
+  mesh(geometries.sphereFine,shellMat,bomb,0,0,0,[.59,.59,.59]);
+  mesh(geometries.sphere,basic('#e9f6ff',{toneMapped:false}),bomb,-.23,.24,.48,[.14,.08,.04]).castShadow=false;
+  const topBand=mesh(new THREE.TorusGeometry(.52,.048,8,32),rimMat,bomb,0,.26,0);
   topBand.rotation.x=-Math.PI/2;
-  const baseBand=mesh(new THREE.TorusGeometry(.60,.047,8,36),yellow,bomb,0,-.28,0);
+  const baseBand=mesh(new THREE.TorusGeometry(.51,.032,8,32),yellow,bomb,0,-.27,0);
   baseBand.rotation.x=-Math.PI/2;
   for(let k=0;k<10;k++){
     const a=k*Math.PI*2/10;
-    const riv=mesh(geometries.sphere,rimMat,bomb,Math.cos(a)*.612,.02,Math.sin(a)*.612,[.055,.055,.055]);
+    const riv=mesh(geometries.sphere,rimMat,bomb,Math.cos(a)*.56,.02,Math.sin(a)*.56,[.04,.04,.04]);
     riv.castShadow=false;
   }
-  mesh(geometries.cylinder,rimMat,bomb,0,.68,0,[.28,.23,.28]);
-  mesh(geometries.cylinder,shellMat,bomb,0,.83,0,[.20,.07,.20]);
+  mesh(geometries.cylinder,rimMat,bomb,0,.57,0,[.23,.17,.23]);
+  mesh(geometries.cylinder,shellMat,bomb,0,.71,0,[.18,.06,.18]);
   const fusePath=new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0,.81,0),
-    new THREE.Vector3(.06,.99,.04),
-    new THREE.Vector3(.17,1.14,.01),
-    new THREE.Vector3(.24,1.30,-.08)
+    new THREE.Vector3(0,.73,0),
+    new THREE.Vector3(.06,.86,.04),
+    new THREE.Vector3(.15,1.00,.01),
+    new THREE.Vector3(.20,1.10,-.08)
   ]);
   mesh(new THREE.TubeGeometry(fusePath,14,.075,8,false),mat('#ceb38d',{roughness:.95,metalness:0}),bomb);
   const hotWick=mesh(geometries.sphere,mat('#fff1a2',{emissive:'#ff9306',emissiveIntensity:5,
-    roughness:.38,metalness:0}),bomb,.24,1.30,-.08,[.115,.115,.115]);
+    roughness:.38,metalness:0}),bomb,.20,1.10,-.08,[.09,.09,.09]);
   hotWick.castShadow=false;
-  const fuseHalo=new THREE.PointLight('#ff9a37',2.0,3,2);fuseHalo.position.set(.24,1.29,-.08);bomb.add(fuseHalo);
+  const fuseHalo=new THREE.PointLight('#ff9a37',2.0,3,2);fuseHalo.position.set(.20,1.09,-.08);bomb.add(fuseHalo);
   const spark=hotWick;
   const fuseSparks=[];
-  for(let i=0;i<7;i++){
-    const dot=mesh(geometries.crystal,basic('#ffe18b',{toneMapped:false}),bomb,.24,1.30,-.08,[.035,.09,.035]);
+  for(let i=0;i<5;i++){
+    const dot=mesh(geometries.crystal,basic('#ffe18b',{toneMapped:false}),bomb,.20,1.10,-.08,[.027,.055,.027]);
     dot.castShadow=false;fuseSparks.push(dot);
   }
   // Gold warning seal on the camera-facing side of the shell.
-  const badge=mesh(geometries.cylinder,yellow,bomb,0,.015,.67,[.21,.031,.21]);
+  const badge=mesh(geometries.cylinder,yellow,bomb,0,.015,.575,[.19,.031,.19]);
   badge.rotation.x=Math.PI/2;
-  block(bomb,0,-.01,.707,.065,.24,.03,shellMat);
-  block(bomb,0,-.19,.717,.065,.07,.025,shellMat);
-  const blastLight=new THREE.PointLight('#ffbb69',2.4,6.5,2);bomb.add(blastLight);
+  block(bomb,0,-.01,.61,.065,.22,.03,shellMat);
+  block(bomb,0,-.19,.615,.065,.07,.025,shellMat);
+  const blastLight=new THREE.PointLight('#ffbb69',.7,4,2);bomb.add(blastLight);
   const trail=Array.from({length:20},()=> {
     const v=mesh(geometries.sphere,basic('#ffbc5c',{transparent:true,opacity:.6,depthWrite:false,toneMapped:false}),effects,0,0,0,[.3,.3,.3]);
     v.visible=false;v.castShadow=false;return v;
   });
   const ripple=Array.from({length:36},()=>{const m=ring(effects,'#fff0ac');m.visible=false;return m;});
   const debris=Array.from({length:160},()=>{const m=mesh(geometries.box,basic('#ffffff',{transparent:true,opacity:1,depthWrite:false,toneMapped:false}),effects);m.visible=false;m.castShadow=false;return m;});
-  const snow=Array.from({length:18},()=> {
-    const o=mesh(geometries.cylinder,basic('#a7edff',{transparent:true,opacity:.16,depthWrite:false}),effects);
-    o.visible=false;o.castShadow=false;return o;
+  // Snow patches use one shared light-weight illustrated texture, not transparent cylinders.
+  // Three large footprints at most; snow damage remains in the 2D physics layer.
+  const snowCanvas=document.createElement('canvas');snowCanvas.width=256;snowCanvas.height=256;
+  const snowCtx=snowCanvas.getContext('2d');
+  const frostGradient=snowCtx.createRadialGradient(128,128,5,128,128,127);
+  frostGradient.addColorStop(0,'rgba(245,253,255,.97)');
+  frostGradient.addColorStop(.57,'rgba(202,245,255,.87)');
+  frostGradient.addColorStop(.83,'rgba(131,220,243,.52)');
+  frostGradient.addColorStop(1,'rgba(95,207,237,0)');
+  snowCtx.fillStyle=frostGradient;snowCtx.fillRect(0,0,256,256);
+  for(let i=0;i<95;i++){
+    const x=128+Math.cos(i*2.4)*(10+(i*37)%98),y=128+Math.sin(i*2.4)*(10+(i*37)%98);
+    snowCtx.fillStyle=i%4===0?'rgba(255,255,255,.8)':'rgba(244,254,255,.38)';
+    snowCtx.fillRect(x,y,2+(i%4),1+(i%3));
+  }
+  const snowTexture=new THREE.CanvasTexture(snowCanvas);snowTexture.colorSpace=THREE.SRGBColorSpace;
+  const snowGeometry=new THREE.PlaneGeometry(2,2);
+  const snow=Array.from({length:3},()=>{
+    const material=basic('#ffffff',{map:snowTexture,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide,toneMapped:false});
+    const meshObj=mesh(snowGeometry,material,effects);meshObj.rotation.x=-Math.PI/2;
+    meshObj.visible=false;meshObj.castShadow=false;return meshObj;
   });
-  const snowRings=Array.from({length:18},()=>{const o=ring(effects,'#b4f4ff');o.visible=false;return o;});
+  const snowRings=Array.from({length:3},()=>{const o=ring(effects,'#d4faff');o.visible=false;return o;});
+  // Round-ending visual-only burst: show the explosion before any selection overlay.
+  const explosionFX=new THREE.Group();scene.add(explosionFX);explosionFX.visible=false;
+  const blastCore=mesh(geometries.sphereFine,basic('#ffcd5e',{transparent:true,opacity:.68,depthWrite:false,toneMapped:false}),explosionFX,0,.85,0);
+  blastCore.castShadow=false;
+  const blastRing=ring(explosionFX,'#ffed9d',1);blastRing.position.y=.11;
+  const innerBlast=ring(explosionFX,'#ff6a9c',1);innerBlast.position.y=.15;
   // Independent identifiable 3D pickups. Labels belong to items only, never players.
   const bonus=new THREE.Group();scene.add(bonus);
   const pickupModels={};
@@ -443,15 +468,15 @@ export function createArena3D(inputCanvas) {
     for(let i=0;i<2;i++)updateHuman(humans[i],g.players[i],g,t,dt);
     const bp=world(g.bomb.x,g.bomb.y,1.0+(g.bomb.mode==='flying'?.38:0));
     bomb.position.copy(bp);bomb.rotation.y=t*2;
-    bomb.scale.setScalar(g.bomb.mode==='held'?.82:1.05);
+    bomb.scale.setScalar(g.bomb.mode==='held'?.72:.93);
     spark.scale.setScalar(1+.17*Math.sin(t*23));
     for(let i=0;i<fuseSparks.length;i++){
-      const a=t*18+i*6.283185307/7,r=.17+.10*Math.sin(t*11+i);
-      const q=fuseSparks[i];q.position.set(.24+Math.cos(a)*r,1.34+Math.abs(Math.sin(a*1.4))*.23,-.08+Math.sin(a)*r);
+      const a=t*18+i*6.283185307/5,r=.12+.06*Math.sin(t*11+i);
+      const q=fuseSparks[i];q.position.set(.20+Math.cos(a)*r,1.11+Math.abs(Math.sin(a*1.4))*.12,-.08+Math.sin(a)*r);
       q.scale.setScalar(.035+.04*(.5+.5*Math.sin(t*13+i)));q.rotation.y=t*9+i;
     }
-    blastLight.intensity=2.1+Math.sin(t*19)*.65;
-    fuseHalo.intensity=1.5+Math.sin(t*22)*.8;
+    blastLight.intensity=.7+Math.sin(t*19)*.22;
+    fuseHalo.intensity=.9+Math.sin(t*22)*.3;
     for(let i=0;i<trail.length;i++){
       const p=g.bomb.trail?.[i],o=trail[i];o.visible=!!p&&g.bomb.mode==='flying';
       if(o.visible){o.position.copy(world(p.x,p.y,.58));o.scale.setScalar(clamp(p.t/.32,.03,1)*.25);o.material.opacity=clamp(p.t/.32,0,.75);}
@@ -465,9 +490,18 @@ export function createArena3D(inputCanvas) {
       if(o.visible){o.position.copy(world(p.x,p.y,.25+Math.abs(p.vy)*.001));const sc=clamp(p.size/S,.055,.24);o.scale.set(sc,sc,sc);o.rotation.set(t*4+i,t*3,t*2);o.material.color.set(p.col);o.material.opacity=clamp(p.t/p.max,0,1);}
     }
     for(let i=0;i<snow.length;i++){
-      const p=g.snowPatches?.[i],o=snow[i],r=snowRings[i];o.visible=r.visible=!!p;
-      if(o.visible){o.position.copy(world(p.x,p.y,.035));o.scale.set(p.r/S,.015,p.r/S);o.material.opacity=clamp(p.t/.8,0,.22);
-        r.position.copy(world(p.x,p.y,.08));r.scale.setScalar(p.r/S*.85);r.material.opacity=clamp(p.t/.8,0,.8);}
+      const p=g.snowPatches?.[i],o=snow[i],r=snowRings[i];o.visible=r.visible=!!p&&g.map.name==='BUZ LABİRENTİ';
+      if(o.visible){o.position.copy(world(p.x,p.y,.065));o.scale.setScalar(p.r/S);
+        o.material.opacity=clamp(p.t/.9,0,.95)*clamp((p.max-p.t)/.35,0,1);
+        r.position.copy(world(p.x,p.y,.08));r.scale.setScalar(p.r/S*.92);r.material.opacity=clamp(p.t/.8,0,.50);}
+    }
+    explosionFX.visible=g.phase==='explode'&&g.phaseTime>1.30;
+    if(explosionFX.visible){
+      const age=2.35-g.phaseTime,ratio=clamp(age/.92,0,1),loser=g.players[g.roundLoser??g.holder];
+      explosionFX.position.copy(world(loser.x,loser.y));
+      blastCore.scale.setScalar(1.1+ratio*2.3);blastCore.material.opacity=.7*(1-ratio);
+      blastRing.scale.setScalar(.7+ratio*6);blastRing.material.opacity=1-ratio;
+      innerBlast.scale.setScalar(.5+ratio*3.5);innerBlast.material.opacity=.85*(1-ratio);
     }
     bonus.visible=!!g.card;
     if(bonus.visible){
@@ -495,7 +529,7 @@ export function createArena3D(inputCanvas) {
     if(composer&&g.map.name!=='SON ŞANS')composer.render();else renderer.render(scene,camera);
   }
   function dispose(){
-    composer?.dispose();detailKit.dispose();renderer.dispose();renderer.domElement.remove();
+    composer?.dispose();detailKit.dispose();snowTexture.dispose();snowGeometry.dispose();renderer.dispose();renderer.domElement.remove();
     disposeGroup(stage);scene.clear();
   }
   return {draw,pointer,dispose};
