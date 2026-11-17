@@ -19,7 +19,7 @@ const MAPS=[
  {name:'BUZ LABİRENTİ',glow:'#79edff',floor:'#112b39',blocks:[{x:318,y:153,w:64,h:246},{x:616,y:153,w:64,h:246},{x:451,y:75,w:98,h:68},{x:451,y:422,w:98,h:65}],features:[]},
  {name:'PORTAL PARTİSİ',glow:'#ff7dc6',floor:'#25142f',blocks:[{x:383,y:112,w:65,h:145},{x:552,y:306,w:65,h:145},{x:451,y:242,w:98,h:78}],features:[{kind:'portal',x:182,y:138,r:36,to:1},{kind:'portal',x:825,y:425,r:36,to:0}]},
  {name:'SEK SEK',glow:'#ffd16e',floor:'#29212e',blocks:[{x:260,y:200,w:110,h:65},{x:630,y:300,w:110,h:65},{x:465,y:60,w:70,h:95},{x:465,y:407,w:70,h:95}],features:[{kind:'bumper',x:500,y:281,r:29},{kind:'bumper',x:146,y:283,r:28},{kind:'bumper',x:854,y:281,r:28}]},
- {name:'SON ŞANS',glow:'#d8ff52',floor:'#142226',blocks:[{x:325,y:92,w:75,h:121},{x:600,y:350,w:75,h:121},{x:468,y:213,w:64,h:137}],features:[{kind:'ice',x:500,y:280,r:123},{kind:'bumper',x:150,y:440,r:31},{kind:'bumper',x:850,y:123,r:31}]}
+ {name:'SON ŞANS',glow:'#d8ff52',floor:'#142226',blocks:[{x:300,y:92,w:75,h:121},{x:625,y:350,w:75,h:121},{x:475,y:215,w:50,h:133}],features:[{kind:'ice',x:500,y:280,r:123},{kind:'bumper',x:150,y:440,r:31},{kind:'bumper',x:850,y:123,r:31}]}
 ];
 const CARDS={blink:{name:'IŞINLAN',emoji:'🌀',color:'#ab92ff'},frost:{name:'DONDUR',emoji:'❄️',color:'#75e8ff'},shield:{name:'KALKAN',emoji:'🛡️',color:'#e0f27e'}};
 const UPGRADES={rocket:{name:'ROKET MOTORU',emoji:'🚀',desc:'Bomba uçuş hızı +%22.'},magnet:{name:'MANYETİK',emoji:'🧲',desc:'Uçarken rakibe doğru hafifçe yönelir.'},bank:{name:'SEKME USTASI',emoji:'🎱',desc:'Bomba 3 yerine 5 kez sekebilir.'},dash:{name:'SERİ ATIL',emoji:'⚡',desc:'Atılma bekleme süresi %25 azalır.'},parry:{name:'REFLEKS',emoji:'🛡️',desc:'Savunma bekleme süresi %25 azalır.'},ghost:{name:'HAYALET BOMBA',emoji:'👻',desc:'Bomba iç engellerin içinden geçer; dış duvarlardan seker.'},charge:{name:'HIZLI ŞARJ',emoji:'🔋',desc:'Bombayı %20 daha hızlı doldur.'},runner:{name:'ÇEVİK ADIM',emoji:'👟',desc:'Normal hareket hızın %8 artar.'},cooling:{name:'SERİN KAN',emoji:'🧊',desc:'Dondurma etkisi %30 daha kısa sürer.'}};
@@ -152,10 +152,11 @@ function updatePlayer(p,dt){p.dashCD=Math.max(0,p.dashCD-dt);p.parryCD=Math.max(
  const i=movementInput(p);if(Math.hypot(i.x,i.y)>.12)p.face={x:i.x,y:i.y};p.aim=aimOf(p);let speed=275*(p.upgrades.includes('runner')?1.08:1);if(game.rules.panic&&game.fuse<5)speed*=1.12;
  if(game.chaos==='turbo')speed*=1.4;
  let icy=game.map.features.some(f=>f.kind==='ice'&&Math.hypot(p.x-f.x,p.y-f.y)<f.r);
- // Snow patches on Ice Labyrinth reduce speed by exactly 30% while inside.
- if(game.map===MAPS[1]&&game.snowPatches.some(f=>Math.hypot(p.x-f.x,p.y-f.y)<f.r+4))speed*=.7;
+ // Snow slows movement by exactly 50% only while physically inside a patch.
+ const inSnow=game.map===MAPS[1]&&game.snowPatches.some(f=>Math.hypot(p.x-f.x,p.y-f.y)<f.r+4);
+ if(inSnow)speed*=.5;
  if(p.stun>0)speed=0;
- if(p.dashTime>0){p.vx=p.face.x*760;p.vy=p.face.y*760}
+ if(p.dashTime>0){p.vx=p.face.x*760*(inSnow?.5:1);p.vy=p.face.y*760*(inSnow?.5:1)}
  else {let ease=icy?3.2:13;let desireX=i.x*speed,desireY=i.y*speed;p.vx=lerp(p.vx,desireX,clamp(ease*dt,0,1));p.vy=lerp(p.vy,desireY,clamp(ease*dt,0,1))}
  p.x=clamp(p.x+p.vx*dt,p.r+22,W-p.r-22);p.y=clamp(p.y+p.vy*dt,p.r+22,H-p.r-22);
  for(const b of game.map.blocks)circleRectResolve(p,b);
@@ -203,22 +204,23 @@ function chaosStep(dt){
 function snowStep(dt){
  const g=game;if(g.map!==MAPS[1])return;
  g.snowDelay-=dt;
- if(g.snowDelay<=0){g.snowDelay=rand(1.9,3.0);const radius=rand(27,44);
+ if(g.snowDelay<=0){g.snowDelay=rand(3.6,4.8);const radius=rand(43,61);
   for(let tries=0;tries<24;tries++){
    const x=rand(85,W-85),y=rand(75,H-75);
-   if(blocked(x,y,radius+5)||g.snowPatches.some(f=>Math.hypot(x-f.x,y-f.y)<f.r+radius+15))continue;
-   g.snowPatches.push({x,y,r:radius,t:rand(5.8,8.2),max:8.2});break;
+   if(blocked(x,y,radius+5)||g.snowPatches.some(f=>Math.hypot(x-f.x,y-f.y)<f.r+radius+25))continue;
+   const lifetime=rand(6.5,8.0);g.snowPatches.push({x,y,r:radius,t:lifetime,max:lifetime});break;
   }
  }
  for(const f of g.snowPatches)f.t-=dt;
- g.snowPatches=g.snowPatches.filter(f=>f.t>0).slice(-6);
+ g.snowPatches=g.snowPatches.filter(f=>f.t>0).slice(-3);
 }
 function botDecisions(dt){if(options.mode!=='bot'||game.phase!=='active')return;const g=game,p=g.players[1],op=g.players[0],difficulty=options.difficulty;const factor=difficulty==='hard'?1:difficulty==='easy'?.26:.58;
  if(g.holder===1&&g.bomb.mode==='held'&&g.lock<=0){if(!p.charging&&dist(p,op)<(difficulty==='hard'?650:500)&&Math.random()<.04*factor*dt*60){beginCharge(1)}if(p.charging&&p.charge>rand(.30,.55)&&(dist(p,op)<(difficulty==='hard'?720:590)||g.fuse<4)){endCharge(1)}}
  else {p.charging=false;p.charge=0;if(g.bomb.mode==='flying'&&g.bomb.owner===0){const b=g.bomb,d=dist(p,b),heading=unit(p.x-b.x,p.y-b.y),incoming=(b.vx*heading.x+b.vy*heading.y)>180;if(d<(difficulty==='hard'?140:90)&&incoming&&Math.random()<.07*factor*dt*60){useParry(1)}}}
  if(p.dashCD<=0){const danger=g.holder===0&&dist(p,op)<170;const chase=g.holder===1&&dist(p,op)>440;if((danger||chase)&&Math.random()<.014*factor*dt*60)useDash(1)}
  if(p.card){if(p.card==='frost'&&dist(p,op)<300&&Math.random()<.06*factor*dt*60)useCard(1);else if(p.card==='shield'&&g.holder===0&&Math.random()<.05*factor*dt*60)useCard(1);else if(p.card==='blink'&&Math.random()<.011*factor*dt*60)useCard(1)}}
-function explode(){const g=game;if(g.phase!=='active')return;g.phase='explode';g.phaseTime=2.35;g.roundLoser=g.holder;g.score[1-g.holder]++;const p=g.players[g.holder];burst(p.x,p.y,'#ff8a8d',85,420);burst(p.x,p.y,'#fff8a8',65,325);ring(p.x,p.y,'#ffec82',350,.8);ring(p.x,p.y,'#f883b9',550,.95);shakes=24;snd('boom');const winner=g.players[1-g.holder];showOverlay('TUR '+g.round+' / '+g.rules.rounds+' • BOOOM!','💥',winner.name+' KURTULDU!',p.name+' bomba elindeyken patladı. Skor '+g.score[0]+' – '+g.score[1]+'.',[])}
+function showExplosionOutcome(){if(!game||game.phase!=='explode')return;const g=game,p=g.players[g.holder],winner=g.players[1-g.holder];showOverlay('TUR '+g.round+' / '+g.rules.rounds+' • BOOOM!','💥',winner.name+' KURTULDU!',p.name+' bomba elindeyken patladı. Skor '+g.score[0]+' – '+g.score[1]+'.',[])}
+function explode(){const g=game;if(g.phase!=='active')return;g.phase='explode';g.phaseTime=2.35;g.explosionNoticeShown=false;g.roundLoser=g.holder;g.score[1-g.holder]++;const p=g.players[g.holder];burst(p.x,p.y,'#ff8a8d',85,420);burst(p.x,p.y,'#fff8a8',65,325);ring(p.x,p.y,'#ffec82',350,.8);ring(p.x,p.y,'#f883b9',550,.95);shakes=24;snd('boom');hideOverlay();}
 function upgradeOptions(g){const owned=g.players[g.roundLoser].upgrades;const available=Object.keys(UPGRADES).filter(x=>!owned.includes(x));for(let i=available.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[available[i],available[j]]=[available[j],available[i]];}return available.slice(0,3);}
 function showUpgradeChoice(){const g=game;if(!g||g.phase!=='upgrade')return;const self=options.mode==='online'?net.slot:0;const isHuman=(options.mode!=='bot'||g.upgradeChooser===0);if(self===g.upgradeChooser&&isHuman){showOverlay('BOMBA EVRİMİ • TUR '+g.round,'🧬','YENİ GÜCÜNÜ SEÇ!',`Kaybettiğin turdan sonra bir geliştirme kazanıyorsun. ${Math.ceil(g.upgradeTimer)} saniyen var.`,g.upgradeOffer.map(k=>({label:UPGRADES[k].emoji+' '+UPGRADES[k].name+' — '+UPGRADES[k].desc,action:()=>chooseUpgrade(k)})));}else{showOverlay('BOMBA EVRİMİ','⏳','RAKİP GÜÇ SEÇİYOR',g.players[g.upgradeChooser].name+' üç geliştirmeden birini seçiyor…',[]);}}
 function chooseUpgrade(id){const g=game;if(!g||g.phase!=='upgrade'||!g.upgradeOffer.includes(id))return;const chooser=g.upgradeChooser;if(options.mode==='online'&&net.role==='guest'){if(net.slot===chooser)netSend({type:'upgrade',choice:id});return;}if(options.mode==='online'&&net.role==='host'&&chooser!==0)return;applyUpgrade(id);}
@@ -229,7 +231,7 @@ function finishMatch(){const g=game;g.phase='finished';const winner=g.score[0]>g
 function tick(dt){globalTime+=dt;for(const pt of particles){pt.x+=pt.vx*dt;pt.y+=pt.vy*dt;pt.vy+=150*dt;pt.t-=dt}particles=particles.filter(p=>p.t>0);for(const r of rings){r.t-=dt;r.r=lerp(r.max,0,r.t/r.life)}rings=rings.filter(r=>r.t>0);if(shakes>0)shakes=Math.max(0,shakes-35*dt);if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)$('toast').classList.remove('show')}if(calloutTimer>0){calloutTimer-=dt;if(calloutTimer<=0)$('eventCallout').classList.add('hidden')}
  if(!game)return;const g=game;
  if(g.phase==='countdown'){g.phaseTime-=dt;if(g.phaseTime<=0){g.phase='active';g.phaseTime=0;alertToast('🔥 BAŞLADI!',.8);snd('ready')}else if(Math.floor(g.phaseTime+.1)!==Math.floor(g.phaseTime+dt+.1))snd('beep',.6);return}
- if(g.phase==='explode'){g.phaseTime-=dt;if(g.phaseTime<=0)nextAfterExplosion();return}
+ if(g.phase==='explode'){g.phaseTime-=dt;if(!g.explosionNoticeShown&&g.phaseTime<=1.30){g.explosionNoticeShown=true;showExplosionOutcome();}if(g.phaseTime<=0)nextAfterExplosion();return}
  if(g.phase==='upgrade'){g.upgradeTimer-=dt;if(g.upgradeTimer<=0){applyUpgrade(g.upgradeOffer[0]);}else if((options.mode==='bot'||options.mode==='local')&&g.upgradeChooser===1&&g.upgradeTimer<12){applyUpgrade(choose(g.upgradeOffer));}return}
  if(g.phase!=='active')return;
  g.fuse=Math.max(0,g.fuse-dt);g.elapsed+=dt;g.lock=Math.max(0,g.lock-dt);
@@ -471,12 +473,13 @@ function onNetMessage(d){
   if(!game)newGame();
   const at=performance.now();net.snapshots.push({t:at,state:d.state});
   if(net.snapshots.length>8)net.snapshots.shift();
-  const oldPhase=game.phase,oldRound=game.round,oldChaos=game.chaos;
+  const oldPhase=game.phase,oldRound=game.round,oldChaos=game.chaos,oldExplosionNotice=game.explosionNoticeShown;
   game=d.state;if(net.hostAway)game.phase='paused';
+  if(game.phase==='explode'&&game.explosionNoticeShown&&!oldExplosionNotice&&!net.hostAway)showExplosionOutcome();
   if(oldRound!==game.round){$('mapName').textContent=game.map.name;hideOverlay();}
   if(oldChaos!==game.chaos&&game.chaos&&CHAOS[game.chaos])flashCallout(CHAOS[game.chaos].name,2);
   if(game.phase!==oldPhase){if(game.phase==='upgrade'){showUpgradeChoice();}else if(game.phase==='explode'){
-     const w=game.players[1-game.holder];showOverlay('TUR '+game.round+' / '+game.rules.rounds+' • BOOOM!','💥',w.name+' KURTULDU!',game.players[game.holder].name+' bombayla patladı.',[]);snd('boom',.6);
+     hideOverlay();snd('boom',.6);
    }else if(game.phase==='finished'){
      const winner=game.score[0]>game.score[1]?0:1;
      showOverlay('MAÇ BİTTİ','🏆',game.players[winner].name+' KAZANDI!','Skor '+game.score.join(' – ')+'. Yeni maç için oda kurucusu rövanş başlatabilir.',[{label:'ANA MENÜ',action:returnMenu}]);snd('win',.5);
