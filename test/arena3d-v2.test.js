@@ -5,15 +5,14 @@ const game=fs.readFileSync(path.join(root,'public/game.js'),'utf8');
 const view=fs.readFileSync(path.join(root,'public/arena3d.js'),'utf8');
 const detail=fs.readFileSync(path.join(root,'public/arena3d-detail.js'),'utf8');
 const maps=Function('return '+game.match(/const MAPS=(\[[\s\S]*?\]);/)[1])();
-test('Last Chance walls have > 2x player radius clearance for human and bomb',()=>{
+test('Last Chance returns to original arena layout and features',()=>{
  const last=maps[4], [left,right,center]=last.blocks;
  assert.equal(last.name,'SON ŞANS');
- assert.equal(left.x+left.w,375);
- assert.equal(right.x,625);
- assert.equal(center.x,475);
- assert.equal(center.x+center.w,525);
- assert.ok(center.x-(left.x+left.w)>2*21+15);
- assert.ok(right.x-(center.x+center.w)>2*21+15);
+ assert.equal(left.x,325);
+ assert.equal(left.x+left.w,400);
+ assert.equal(right.x,600);
+ assert.equal(center.x,468);
+ assert.equal(center.x+center.w,532);
  assert.equal(last.features.length,3);
 });
 test('Last Chance keeps normal speed but responsive movement through its central ice region',()=>{
@@ -44,7 +43,7 @@ test('Bright stylized arena is visibly 3D, rounded and retains collider footprin
  assert.match(detail,/palettes=\{/);
  assert.match(detail,/new THREE\.ExtrudeGeometry\(shape/);
  assert.match(detail,/roundedWall\(w,d,2\.68\)/);
- assert.match(view,/block\(stage,cx,1\.2,cz,w,2\.4,d,wallBody\)/);
+ assert.match(view,/function buildClassicMap\(map\)/);
  assert.match(view,/key\.castShadow = true/);
  assert.match(view,/const humans=\[makeHuman/);
  assert.match(view,/baseDisc/);
