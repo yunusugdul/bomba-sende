@@ -157,7 +157,7 @@ function updatePlayer(p,dt){p.dashCD=Math.max(0,p.dashCD-dt);p.parryCD=Math.max(
  if(inSnow)speed*=.5;
  if(p.stun>0)speed=0;
  if(p.dashTime>0){p.vx=p.face.x*760*(inSnow?.5:1);p.vy=p.face.y*760*(inSnow?.5:1)}
- else {let ease=icy?3.2:13;let desireX=i.x*speed,desireY=i.y*speed;p.vx=lerp(p.vx,desireX,clamp(ease*dt,0,1));p.vy=lerp(p.vy,desireY,clamp(ease*dt,0,1))}
+ else {let ease=icy?(game.map===MAPS[4]?11:3.2):13;let desireX=i.x*speed,desireY=i.y*speed;p.vx=lerp(p.vx,desireX,clamp(ease*dt,0,1));p.vy=lerp(p.vy,desireY,clamp(ease*dt,0,1))}
  p.x=clamp(p.x+p.vx*dt,p.r+22,W-p.r-22);p.y=clamp(p.y+p.vy*dt,p.r+22,H-p.r-22);
  for(const b of game.map.blocks)circleRectResolve(p,b);
  for(const f of game.map.features){if(f.kind==='bumper'){const d=Math.hypot(p.x-f.x,p.y-f.y);if(d<p.r+f.r){const dir=unit(p.x-f.x,p.y-f.y);p.x=f.x+dir.x*(p.r+f.r+2);p.y=f.y+dir.y*(p.r+f.r+2);p.vx=dir.x*460;p.vy=dir.y*460;if(Math.random()<.28)burst(p.x,p.y,'#ffe989',4,75)}}if(f.kind==='portal'&&p.portalCD<=0&&Math.hypot(p.x-f.x,p.y-f.y)<f.r*.65){const target=game.map.features.find((v,j)=>v.kind==='portal'&&v.to!==f.to);if(target){burst(p.x,p.y,'#b399ff',18,160);p.x=clamp(target.x+rand(-30,30),60,940);p.y=clamp(target.y+rand(-30,30),60,502);p.portalCD=1.45;burst(p.x,p.y,'#b399ff',18,160);snd('card',.5)}}}
