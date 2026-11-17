@@ -57,7 +57,7 @@ function remotePresentation(now){
  return {players,bomb};
 }
 
-let game=null, animLast=0, lastHud=0, keys=Object.create(null), muted=false,audio=null;
+let game=null, animLast=0, lastHud=0, keys=Object.create(null), muted=false,audio=null,gunNoiseBuffer=null;
 const CHAT_FADE_MS=4000;
 let chatFadeTimer=null;
 function showChatTemporarily(){
@@ -78,7 +78,23 @@ function resetChatVisibility(){
 let mouse={x:760,y:280,active:false};
 let touch={dx:0,dy:0,joystickId:null,throwDown:false};
 let particles=[],rings=[],shakes=0,globalTime=0,toastTimer=0,calloutTimer=0;
-function snd(type,volume=1){if(muted)return;try{audio??=new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();const notes={ready:[[490,.06,'sine',.045]],throw:[[240,.11,'sawtooth',.07],[450,.1,'sine',.04]],hit:[[700,.08,'triangle',.12],[420,.16,'sawtooth',.05]],parry:[[880,.08,'square',.045],[1150,.1,'triangle',.035]],dash:[[110,.1,'sawtooth',.045]],card:[[640,.1,'sine',.08],[940,.18,'sine',.05]],beep:[[740,.07,'square',.018]],boom:[[125,.3,'sawtooth',.16],[63,.5,'triangle',.12]],win:[[490,.12,'sine',.07],[660,.18,'sine',.07],[880,.3,'sine',.08]],shot:[[210,.085,'sawtooth',.11],[92,.11,'triangle',.12]],reload:[[520,.06,'square',.023],[760,.13,'sine',.05]],damage:[[115,.11,'sawtooth',.075]],eliminate:[[92,.25,'triangle',.14],[165,.17,'sawtooth',.11]],click:[[520,.04,'sine',.025]]}[type]||[];for(const [f,len,wave,vol] of notes){const osc=audio.createOscillator(),gain=audio.createGain(),now=audio.currentTime;osc.type=wave;osc.frequency.setValueAtTime(f,now);osc.frequency.exponentialRampToValueAtTime(Math.max(45,f*.65),now+len);gain.gain.setValueAtTime(vol*volume,now);gain.gain.exponentialRampToValueAtTime(.0001,now+len);osc.connect(gain).connect(audio.destination);osc.start(now);osc.stop(now+len+.005)}}catch(e){/* audio is optional */}}
+function snd(type,volume=1){if(muted)return;try{audio??=new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();
+  if(type==='shot'){
+    const rate=audio.sampleRate;
+    if(!gunNoiseBuffer){
+      const size=Math.floor(rate*.105);
+      gunNoiseBuffer=audio.createBuffer(1,size,rate);
+      const data=gunNoiseBuffer.getChannelData(0);
+      for(let i=0;i<size;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/size,2.7);
+    }
+    const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();
+    source.buffer=gunNoiseBuffer;filter.type='bandpass';filter.frequency.value=1250;filter.Q.value=.68;
+    gain.gain.setValueAtTime(.24*volume,audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.105);
+    source.connect(filter).connect(gain).connect(audio.destination);
+    source.start();source.stop(audio.currentTime+.11);return;
+  }
+  const notes={ready:[[490,.06,'sine',.045]],throw:[[240,.11,'sawtooth',.07],[450,.1,'sine',.04]],hit:[[700,.08,'triangle',.12],[420,.16,'sawtooth',.05]],parry:[[880,.08,'square',.045],[1150,.1,'triangle',.035]],dash:[[110,.1,'sawtooth',.045]],card:[[640,.1,'sine',.08],[940,.18,'sine',.05]],beep:[[740,.07,'square',.018]],boom:[[125,.3,'sawtooth',.16],[63,.5,'triangle',.12]],win:[[490,.12,'sine',.07],[660,.18,'sine',.07],[880,.3,'sine',.08]],shot:[[210,.085,'sawtooth',.11],[92,.11,'triangle',.12]],reload:[[520,.06,'square',.023],[760,.13,'sine',.05]],damage:[[115,.11,'sawtooth',.075]],eliminate:[[92,.25,'triangle',.14],[165,.17,'sawtooth',.11]],click:[[520,.04,'sine',.025]]}[type]||[];for(const [f,len,wave,vol] of notes){const osc=audio.createOscillator(),gain=audio.createGain(),now=audio.currentTime;osc.type=wave;osc.frequency.setValueAtTime(f,now);osc.frequency.exponentialRampToValueAtTime(Math.max(45,f*.65),now+len);gain.gain.setValueAtTime(vol*volume,now);gain.gain.exponentialRampToValueAtTime(.0001,now+len);osc.connect(gain).connect(audio.destination);osc.start(now);osc.stop(now+len+.005)}}catch(e){/* audio is optional */}}
 function alertToast(s,seconds=1.4){const el=$('toast');el.textContent=s;el.classList.add('show');toastTimer=seconds}
 function flashCallout(s,seconds=2){const el=$('eventCallout');el.textContent=s;el.classList.remove('hidden');calloutTimer=seconds}
 function burst(x,y,color,count=14,speed=160){for(let i=0;i<count;i++){const ang=rand(0,TAU),v=rand(speed*.25,speed);particles.push({x,y,vx:Math.cos(ang)*v,vy:Math.sin(ang)*v,size:rand(2,6),t:rand(.3,.85),max:.85,col:color})}if(particles.length>500)particles.splice(0,particles.length-500)}
@@ -202,11 +218,12 @@ function shooterFire(p){
    x:p.x+direction.x*spawn,y:p.y+direction.y*spawn,
    vx:direction.x*speed,vy:direction.y*speed,t:.96,color:p.color};
  p.ammo--;p.fireCD=.17;p.muzzle=.085;p.aim=direction;
+ g.stats.throws[p.id]++;
  g.bullets.push(bullet);g.shotsFired[p.id]++;
  if(g.bullets.length>80)g.bullets.splice(0,g.bullets.length-80);
  burst(bullet.x,bullet.y,'#ffd785',4,95);
  snd('shot',p.id===0?.65:.38);
- if(p.ammo===0)shooterReload(p.id);
+ if(p.ammo===0){shooterReload(p.id);p.shooting=true;}
 }
 function shooterHit(p,owner,x,y){
  const g=game;
