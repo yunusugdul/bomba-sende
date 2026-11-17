@@ -3,6 +3,14 @@
 export function createArenaDetailKit(THREE, tools) {
   const {stage, world, block, mesh, track, ring, geometries, lowPower} = tools;
   const SRGB=THREE.SRGBColorSpace;
+  // Friendly, high-contrast stylized 3D arenas; distinctive to Bomba Sende.
+  const palettes={
+   'NEON PARK':{floor:'#496a85',tile:'#74a1ba',wall:'#6d5796',top:'#b6a1d4',dark:'#443f68'},
+   'BUZ LABİRENTİ':{floor:'#4b90ad',tile:'#82c8df',wall:'#416a91',top:'#b5eff9',dark:'#295675'},
+   'PORTAL PARTİSİ':{floor:'#745078',tile:'#b47da5',wall:'#705080',top:'#e4add4',dark:'#533760'},
+   'SEK SEK':{floor:'#88654f',tile:'#c79a72',wall:'#796090',top:'#f1c88b',dark:'#574766'},
+   'SON ŞANS':{floor:'#43745d',tile:'#80b783',wall:'#527f72',top:'#c7e4a4',dark:'#36524d'}
+  };
   const material=(c,more={})=>new THREE.MeshPhysicalMaterial({
     color:c,roughness:.46,metalness:.37,clearcoat:.32,clearcoatRoughness:.33,...more
   });
@@ -19,6 +27,8 @@ export function createArenaDetailKit(THREE, tools) {
   }
   const ambientOcclusion=makeRadial();
   let activeFloorTexture=null;
+  const ventDark=material('#26314a',{metalness:.25,roughness:.65});
+  const ventBright=material('#899bb4',{metalness:.31,roughness:.5});
   function shadowAt(x,z,w,d,alpha=.7) {
     const o=mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshBasicMaterial({
       map:ambientOcclusion,color:'#000000',transparent:true,opacity:alpha,
@@ -30,20 +40,22 @@ export function createArenaDetailKit(THREE, tools) {
     seed=map.name.split('').reduce((n,c)=>n+c.charCodeAt(0)*41,7421);
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=576;
     const c=canvas.getContext('2d'),w=1024,h=576;
-    c.fillStyle=map.floor;c.fillRect(0,0,w,h);
+    const palette=palettes[map.name]||palettes['NEON PARK'];
+    c.fillStyle=palette.floor;c.fillRect(0,0,w,h);
     const tint=new THREE.Color(map.glow);
     const rgb='#'+tint.getHexString();
     c.strokeStyle='rgba(255,255,255,.070)';c.lineWidth=2;
     // Industrial modular floor. Milled seams and alternating brushed metal panels.
     for(let y=0;y<h;y+=48)for(let x=0;x<w;x+=64){
       const light=random();
-      c.fillStyle=light>.5?'rgba(220,230,255,.021)':'rgba(0,0,0,.077)';
-      c.fillRect(x+2,y+2,60,44);
-      c.strokeStyle='rgba(170,180,218,.09)';c.lineWidth=1;
+      c.fillStyle=light>.22?palette.tile:palette.floor;
+      c.globalAlpha=light>.22?.15:.12;
+      c.fillRect(x+2,y+2,60,44);c.globalAlpha=1;
+      c.strokeStyle='rgba(15,32,55,.24)';c.lineWidth=1;
       c.strokeRect(x+2,y+2,60,44);
-      c.strokeStyle='rgba(0,0,0,.27)';
+      c.strokeStyle='rgba(13,22,43,.25)';
       c.beginPath();c.moveTo(x+2,y+44);c.lineTo(x+61,y+44);c.stroke();
-      c.fillStyle='rgba(235,240,255,.22)';
+      c.fillStyle='rgba(240,249,255,.30)';
       for(const dx of [7,56])for(const dy of [7,39])c.fillRect(x+dx,y+dy,1.5,1.5);
       if(random()>.86){
         c.fillStyle='rgba(180,210,255,.065)';
@@ -51,7 +63,7 @@ export function createArenaDetailKit(THREE, tools) {
       }
     }
     // Seam grain and fine surface wear, generated once per map (not per frame).
-    for(let i=0;i<2200;i++){
+    for(let i=0;i<1100;i++){
       const x=random()*w,y=random()*h;
       c.strokeStyle=random()>.48?'rgba(236,240,255,.060)':'rgba(0,0,0,.09)';
       c.lineWidth=.6+random()*.5;
@@ -63,7 +75,7 @@ export function createArenaDetailKit(THREE, tools) {
     for(let r=125;r<190;r+=32){c.beginPath();c.ellipse(w/2,h/2,r,r,0,0,Math.PI*2);c.stroke();}
     c.globalAlpha=1;
     c.textAlign='center';c.textBaseline='middle';c.font='900 16px Arial,sans-serif';
-    c.fillStyle='rgba(220,232,255,.16)';
+    c.fillStyle='rgba(220,240,255,.26)';
     c.fillText('BOMBA SENDE  /  ARENA',w/2,h/2+2);
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=SRGB;
     texture.anisotropy=4;texture.wrapS=THREE.ClampToEdgeWrapping;texture.wrapT=THREE.ClampToEdgeWrapping;
@@ -91,9 +103,9 @@ export function createArenaDetailKit(THREE, tools) {
   }
   function makeVent(x,z,w=.7,d=.5,angle=0){
     const group=new THREE.Group();stage.add(group);group.position.set(x,.011,z);group.rotation.y=angle;
-    const grate=block(group,0,0,0,w,.035,d,material('#101424',{metalness:.75,roughness:.38}));
+    const grate=block(group,0,0,0,w,.035,d,ventDark);
     grate.castShadow=false;
-    for(let i=-2;i<=2;i++)block(group,0,.026,i*d/6,w*.82,.015,.027,material('#737791',{metalness:.73,roughness:.33})).castShadow=false;
+    for(let i=-1;i<=1;i++)block(group,0,.026,i*d/4,w*.82,.015,.027,ventBright).castShadow=false;
   }
   function makeFloorDecal(x,z,w,d,hex,alpha=.34){
     const m=mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshBasicMaterial({
@@ -106,7 +118,7 @@ export function createArenaDetailKit(THREE, tools) {
     activeFloorTexture?.dispose();
     const floorMap=floorTexture(map);
     activeFloorTexture=floorMap;
-    const top=material('#ffffff',{map:floorMap,color:'#ffffff',metalness:.27,roughness:.75});
+    const top=material('#ffffff',{map:floorMap,color:'#ffffff',metalness:.05,roughness:.87,clearcoat:.06});
     const floor=mesh(new THREE.PlaneGeometry(39.9,22.3),top,stage,0,-.003,0);
     floor.rotation.x=-Math.PI/2;floor.castShadow=false;floor.receiveShadow=true;
     // Copper/brass inner boundary, glowing glass fibres and inset hazard markings.
@@ -114,7 +126,7 @@ export function createArenaDetailKit(THREE, tools) {
     for(const [x,z,w,d] of [[0,-11.1,39.8,.10],[0,11.1,39.8,.10],[-19.91,0,.10,22.1],[19.91,0,.10,22.1]]){
       block(stage,x,.07,z,w,.07,d,border).castShadow=false;
     }
-    for(let i=-18;i<=18;i+=2.4) {
+    for(let i=-18;i<=18;i+=5.2) {
       for(const z of [-10.84,10.84]){
         makeFloorDecal(i,z,1.0,.13,map.glow,.26);
         makeVent(i+1,z,1,.33);
@@ -126,7 +138,7 @@ export function createArenaDetailKit(THREE, tools) {
       track(stage,0,s*11.88,40.3,.055,map.glow,.21,.94);
       block(stage,s*20.78,.25,0,.36,.59,24,material('#171b2f',{metalness:.7,roughness:.37}));
       track(stage,s*20.82,0,.065,23,map.glow,.61,.85);
-      for(let z=-9;z<=9;z+=3){
+      for(let z=-9;z<=9;z+=4.5){
         block(stage,s*20.70,.85,z,.17,1.03,.54,material('#3e4966',{metalness:.71,roughness:.31}));
         mesh(geometries.sphere,unlit(map.glow),stage,s*20.72,1.36,z,[.105,.1,.105]).castShadow=false;
       }
@@ -136,26 +148,46 @@ export function createArenaDetailKit(THREE, tools) {
       makeVent(-18.65,z,1.15,.40,Math.PI/2);
       makeVent(18.65,z,1.15,.40,Math.PI/2);
     }
+    // Thick, beveled, readable 3D cartoon fortifications. Same collider footprints,
+    // deliberately lifted above the ground so obstacles read as real solid walls.
+    const art=palettes[map.name]||palettes['NEON PARK'];
+    const body=material(art.wall,{metalness:.09,roughness:.57,clearcoat:.14});
+    const cap=material(art.top,{metalness:.08,roughness:.47,clearcoat:.24});
+    const darker=material(art.dark,{metalness:.06,roughness:.7});
+    const accent=unlit(map.glow);
+    function roundedWall(width,depth,height){
+      const bevel=.11,hw=width/2-.21,hd=depth/2-.21,rad=Math.min(.40,hw*.28,hd*.28);
+      const shape=new THREE.Shape();
+      shape.moveTo(-hw+rad,-hd);
+      shape.lineTo(hw-rad,-hd);shape.quadraticCurveTo(hw,-hd,hw,-hd+rad);
+      shape.lineTo(hw,hd-rad);shape.quadraticCurveTo(hw,hd,hw-rad,hd);
+      shape.lineTo(-hw+rad,hd);shape.quadraticCurveTo(-hw,hd,-hw,hd-rad);
+      shape.lineTo(-hw,-hd+rad);shape.quadraticCurveTo(-hw,-hd,-hw+rad,-hd);
+      const geo=new THREE.ExtrudeGeometry(shape,{depth:height,steps:1,
+        bevelEnabled:true,bevelSize:bevel,bevelThickness:.14,bevelSegments:2,curveSegments:3});
+      geo.rotateX(-Math.PI/2);
+      return geo;
+    }
     for(const b of map.blocks){
       const x=(b.x+b.w/2-500)/25,z=(b.y+b.h/2-281)/25,w=b.w/25,d=b.h/25;
-      shadowAt(x,z,w+2,d+2);
-      const detail=new THREE.Group();stage.add(detail);
-      // Body stays inside existing collider rectangle. Side louvres/metal corner trims.
-      for(const sign of [-1,1]){
-        block(detail,x+sign*(w*.5-.11),.75,z,.12,1.05,d*.76,material('#17182a',{metalness:.82,roughness:.25}));
-        block(detail,x,.82,z+sign*(d*.5-.11),w*.79,.95,.12,material('#242a40',{metalness:.63,roughness:.34}));
-        for(let k=-2;k<=2;k++){
-          const zz=z+k*d/7;
-          block(detail,x+sign*(w*.5-.073),.75,zz,.05,.09,d/17,material('#a8acc8',{metalness:.75,roughness:.27}));
-        }
+      shadowAt(x,z,w+2,d+2,.60);
+      const wall=mesh(roundedWall(w,d,2.27),body,stage,x,.20,z);
+      wall.castShadow=true;wall.receiveShadow=true;
+      // Raised bright cap and rim give strong top/side separation at isometric angle.
+      const topCap=mesh(roundedWall(w*.89,d*.87,.22),cap,stage,x,2.37,z);
+      topCap.castShadow=true;
+      block(stage,x,2.38,z,w*.62,.06,d*.62,darker);
+      // Inset highlight stripe along the top, within the existing collision rectangle.
+      for(const side of [-1,1]){
+        const line=block(stage,x,2.67,z+side*(d*.38),w*.72,.055,.11,accent);
+        line.castShadow=false;
+        block(stage,x+side*(w*.39),1.50,z,.085,1.35,d*.77,darker);
+        const sidePaint=block(stage,x+side*(w*.38),1.18,z,.035,.27,d*.49,cap);
+        sidePaint.castShadow=false;
       }
-      // Machined top, brushed centre insert and angular neon channels.
-      block(detail,x,1.49,z,w*.90,.067,d*.88,material('#4d5570',{metalness:.72,roughness:.28,clearcoat:.6}));
-      block(detail,x,1.535,z,w*.73,.021,d*.68,material('#141827',{metalness:.55,roughness:.35}));
-      hazardTrim(detail,x,z,w,d,1.58,map.glow);
-      boltsAlong(x,z,w*.8,d*.8,1.61,detail);
-      const warning=makeFloorDecal(x,z,w+1.3,d+1.3,map.glow,.07);
-      warning.position.y=.016; // ground-only halo, not collision
+      if(!lowPower)boltsAlong(x,z,w*.74,d*.70,2.74);
+      // Visually heavy wall base, no new collision or obstacle outline.
+      block(stage,x,.26,z,w*.95,.28,d*.94,darker);
     }
     // Decorative corner columns live outside the effective 2D boundary.
     for(const xx of [-20.55,20.55])for(const zz of [-11.6,11.6]){
@@ -164,10 +196,7 @@ export function createArenaDetailKit(THREE, tools) {
       block(stage,xx,.64,zz,.37,1.15,.37,material('#555470',{metalness:.78,roughness:.2}));
       block(stage,xx,1.24,zz,.72,.15,.72,material('#141b31',{metalness:.62,roughness:.23}));
       mesh(geometries.sphere,unlit(map.glow),stage,xx,1.44,zz,[.18,.18,.18]).castShadow=false;
-      if(!lowPower) {
-        const light=new THREE.PointLight(map.glow,1.1,6.5,2);
-        light.position.set(xx,1.8,zz);stage.add(light);
-      }
+      // Decorative emissive cap instead of four expensive realtime point lights.
     }
     // Map feature-specific eye candy; never change original feature geometry.
     for(const f of map.features){
@@ -196,10 +225,10 @@ export function createArenaDetailKit(THREE, tools) {
         visuals.push(t=>{holo.material.opacity=.42+.22*Math.sin(t*4);});
       }else if(f.kind==='ice'){
         const g=new THREE.Group();stage.add(g);g.position.copy(pt);
-        for(let i=0;i<16;i++){
-          const a=i*Math.PI*2/16,r=rad*(.55+random()*.34);
-          const piece=mesh(geometries.crystal,material('#96edff',{
-            transparent:true,opacity:.48,metalness:.07,roughness:.13,transmission:.10}),g,
+        for(let i=0;i<8;i++){
+          const a=i*Math.PI*2/8,r=rad*(.55+random()*.34);
+          const piece=mesh(geometries.crystal,material('#b2f3ff',{
+            transparent:false,metalness:.03,roughness:.42,emissive:'#1f728b',emissiveIntensity:.1}),g,
             Math.cos(a)*r,.09,Math.sin(a)*r,[.13,.12,.30]);
           piece.castShadow=false;piece.rotation.y=a;
         }
@@ -207,5 +236,5 @@ export function createArenaDetailKit(THREE, tools) {
     }
     return {update(t){for(const fn of visuals)fn(t);}};
   }
-  return {build,dispose(){activeFloorTexture?.dispose();ambientOcclusion.dispose();}};
+  return {build,dispose(){activeFloorTexture?.dispose();ambientOcclusion.dispose();ventDark.dispose();ventBright.dispose();}};
 }
