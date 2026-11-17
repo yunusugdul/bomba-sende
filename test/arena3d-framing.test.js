@@ -51,7 +51,7 @@ test('3D obstacles are truly extruded with separate bevelled material sides, wit
  assert.match(art,/roundedWall\(w,d,2\.68\)/);
  assert.match(art,/\[cap,body\]/);
  assert.match(view,/function buildClassicMap\(map\)/);
- assert.match(view,/if\(simple\)\{stageDetail=null;buildClassicMap\(map\);return;\}/);
+ assert.match(view,/if\(simple\)\{stageDetail=buildClassicMap\(map\);return;\}/);
  assert.match(art,/shadowAt\(x,z,w\+2,d\+2/);
  assert.doesNotMatch(view,/\.\_visual=/);
 });
