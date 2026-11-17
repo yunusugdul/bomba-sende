@@ -890,7 +890,7 @@ function onNetMessage(d){
  }
  if(d.type==='input'&&net.role==='host'){
   const slot=Number.isInteger(d.slot)?d.slot:1;
-  if(slot<=0||slot>=game?.players?.length)return;
+  if(!game||slot<=0||slot>=game.players.length)return;
   const remote={x:d.x||0,y:d.y||0,aimX:d.aimX||0,aimY:d.aimY||0,aimActive:!!d.aimActive};
   net.remotes[slot]=remote;if(slot===1)net.remote=remote;
   if(game.phase==='countdown'&&WEAPONS[d.weapon]){
@@ -963,12 +963,15 @@ function layoutArena(){if(!document.body.classList.contains('is-playing'))return
  const width=Math.max(100,Math.min(availableW,availableH*W/H));
  shell.style.width=width+'px';shell.style.height=Math.max(60,width*H/W)+'px';
 }
-function readRules(){const p=$('rulesPreset').value;const r={preset:p,arena:$('rulesArena').value,rounds:Number($('rulesRounds').value),upgradePersistence:$('rulesPersistence').value};for(const f of ['upgrades','chaos','cards','panic'])r[f]=$('rules'+f[0].toUpperCase()+f.slice(1)).checked;options.rules=safeRules(r);renderRules();}
-function renderRules(){const r=options.rules;$('rulesPreset').value=r.preset;$('rulesArena').value=r.arena;$('rulesRounds').value=String(r.rounds);$('rulesPersistence').value=r.upgradePersistence;for(const k of ['upgrades','chaos','cards','panic'])$('rules'+k[0].toUpperCase()+k.slice(1)).checked=r[k];$('selectedRules').textContent=`${(['upgrades','chaos','cards','panic'].some(k=>r[k]!==PRESETS[r.preset][k])?'🎛️ Özel Kurallar':({fusion:'🔥 Hepsi Bir Arada',evolution:'💣 Bomba Evrimi',party:'⚡ Çılgın Kaos',classic:'🎯 Klasik Düello'}[r.preset]))} • ${r.rounds} tur • ${r.arena==='cycle'?'Dönen arenalar':r.arena==='random'?'Rastgele arenalar':MAPS[Number(r.arena)].name} • ${r.upgradePersistence==='round'?'Güçler her tur sıfırlanır':'Güçler maç boyu birikir'}`;$('roomRulePreview').textContent=$('selectedRules').textContent;const locked=options.mode==='online'&&net.code!==null;$('rulesEditor').querySelectorAll('select,input').forEach(el=>el.disabled=locked);}
+function readRules(){const p=$('rulesPreset').value;const r={preset:p,battleMode:$('battleMode').value,arena:$('rulesArena').value,rounds:Number($('rulesRounds').value),upgradePersistence:$('rulesPersistence').value};for(const f of ['upgrades','chaos','cards','panic'])r[f]=$('rules'+f[0].toUpperCase()+f.slice(1)).checked;options.rules=safeRules(r);renderRules();}
+function renderRules(){const r=options.rules;$('battleMode').value=r.battleMode;$('weaponChoice').value=options.weapon;$('rulesPreset').value=r.preset;$('rulesArena').value=r.arena;$('rulesRounds').value=String(r.rounds);$('rulesPersistence').value=r.upgradePersistence;for(const k of ['upgrades','chaos','cards','panic'])$('rules'+k[0].toUpperCase()+k.slice(1)).checked=r[k];$('selectedRules').textContent=`${(['upgrades','chaos','cards','panic'].some(k=>r[k]!==PRESETS[r.preset][k])?'🎛️ Özel Kurallar':({fusion:'🔥 Hepsi Bir Arada',evolution:'💣 Bomba Evrimi',party:'⚡ Çılgın Kaos',classic:'🎯 Klasik Düello'}[r.preset]))} • ${r.battleMode==='duel'?'1v1 DÜELLO':r.battleMode==='team'?'2v2 TAKIM':'4 OYUNCU FFA'} • ${r.rounds} tur/eleme • ${r.arena==='cycle'?'Dönen arenalar':r.arena==='random'?'Rastgele arenalar':MAPS[Number(r.arena)].name} • ${r.upgradePersistence==='round'?'Güçler her tur sıfırlanır':'Güçler maç boyu birikir'}`;$('roomRulePreview').textContent=$('selectedRules').textContent;const locked=options.mode==='online'&&net.code!==null;$('rulesEditor').querySelectorAll('select,input').forEach(el=>el.disabled=locked&&el.id!=='weaponChoice');}
 function init(){
  $('rulesEditor').before($('onlineRoom'));
  $('rulesPreset').addEventListener('change',e=>{const base=PRESETS[e.target.value];for(const k of Object.keys(base))$('rules'+k[0].toUpperCase()+k.slice(1)).checked=base[k];readRules()});
- $('rulesEditor').querySelectorAll('select,input').forEach(el=>{if(el.id!=='rulesPreset')el.addEventListener('change',readRules)});renderRules();
+ $('rulesEditor').querySelectorAll('select,input').forEach(el=>{if(el.id!=='rulesPreset'&&el.id!=='weaponChoice')el.addEventListener('change',readRules)});
+ $('weaponChoice').addEventListener('change',()=>{options.weapon=WEAPONS[$('weaponChoice').value]?$('weaponChoice').value:'pistol';
+  const w=WEAPONS[options.weapon];$('weaponHelp').textContent=w.name+' • '+w.damage+' hasar • '+w.clip+' mermi • '+(1/w.rate).toFixed(1)+' atış/sn.';
+  snd('click');});renderRules();
  document.querySelectorAll('.mode-btn').forEach(el=>el.addEventListener('click',()=>{options.mode=el.dataset.mode;document.querySelectorAll('.mode-btn').forEach(b=>{b.classList.toggle('selected',b===el);b.setAttribute('aria-pressed',b===el?'true':'false')});$('difficultyRow').classList.toggle('hidden',options.mode!=='bot');$('onlineRoom').classList.toggle('hidden',options.mode!=='online');document.body.classList.toggle('online-setup',options.mode==='online');$('startBtn').classList.toggle('hidden',options.mode==='online');if(options.mode==='online'&&matchMedia('(max-width:760px)').matches)requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'instant'}));snd('click')}));
  document.querySelectorAll('.diff-buttons button').forEach(el=>el.addEventListener('click',()=>{options.difficulty=el.dataset.diff;document.querySelectorAll('.diff-buttons button').forEach(b=>b.classList.toggle('selected',b===el));snd('click')}));
  $('startBtn').addEventListener('click',()=>{options.nickname=$('nick').value.trim().slice(0,14)||'KAOS KRALI';newGame();snd('click')});
