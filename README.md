@@ -52,3 +52,24 @@ V5 yedeği GitHub'da: `backup/v5-before-chat-snow-upgrades`. V4 yedeği: `backup
 - Tam ekran modunda mesaj gelmezse veya sohbet yazma penceresi kapandıktan **4 saniye** sonra sohbet kaybolur. Enter açar; Enter gönderip kapatır; Esc iptal eder.
 - Oda sohbeti, Sen/O etiketleri, oyun kuralları, rövanş ve diğer kontroller korunur.
 - Geri dönüş için `backup/v8-before-centered-chat` dalı.
+
+## Three.js 3D Arena — staging only
+
+The original game rules, 1000×562 logical coordinate system, hitboxes, movement, physics,
+rounds, upgrades, rooms and host-authoritative WebSocket protocol are unchanged.
+`public/arena3d.js` is a visual-only renderer using an orthographic isometric camera.
+It uses the same `game` state rendered by the original Canvas 2D renderer and maps
+mouse pointers to the 2D gameplay floor using a ray/plane intersection.
+If WebGL/Three.js is unavailable, the original 2D renderer remains the fallback.
+
+* Production: `main` → https://bomba-sende.onrender.com
+* Staging: `feature/3d-arena` → https://bomba-sende-3d-test.onrender.com
+* Staging is a separate Render Node web service: rooms on the two sites are independent.
+* Run locally with Node 22+: `npm install && npm test && npm start`.
+* Test both a solo bot game and a two-browser online room on staging before merging.
+* Do **not** merge this branch into `main` until the owner explicitly approves launch.
+
+The 3D renderer's first implementation uses procedural models: stylized animated
+humans, raised obstacles, feature meshes, bomb/trail, pickups, player labels,
+projectile effects, glow rails, ambient lighting and dynamic shadows.
+It adds no gameplay actions or rules.
