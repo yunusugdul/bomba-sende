@@ -237,12 +237,46 @@ export function createArena3D(inputCanvas) {
     o.model.children[0].material.emissive?.set(p.stun>0?'#285775':'#000000');
     // Character names remain exclusively in the existing scoreboard.
   }
-  let bomb= new THREE.Group();scene.add(bomb);
-  mesh(geometries.sphereFine,mat('#171b2b',{metalness:.76,roughness:.23}),bomb,0,0,0,[.57,.57,.57]);
-  mesh(geometries.torusWide,basic('#ffb453',{toneMapped:false}),bomb,0,.1,0,[.57,.57,.57]);
-  mesh(geometries.cylinder,mat('#e0d9ad'),bomb,.19,.60,0,[.12,.19,.12]);
-  const spark=mesh(geometries.sphere,basic('#fff4a4',{toneMapped:false}),bomb,.19,.77,0,[.18,.18,.18]);
-  const blastLight=new THREE.PointLight('#ffbb69',2.7,7,2);bomb.add(blastLight);
+  // Recognizable hand-fused bomb: layered forged metal, warning badge, cap and live wick.
+  const bomb=new THREE.Group();scene.add(bomb);
+  const shellMat=mat('#111720',{metalness:.67,roughness:.3});
+  const rimMat=mat('#858c98',{metalness:.82,roughness:.22});
+  const yellow=mat('#f3ad42',{metalness:.32,roughness:.3,emissive:'#71420c',emissiveIntensity:.5});
+  mesh(geometries.sphereFine,shellMat,bomb,0,0,0,[.67,.67,.67]);
+  const topBand=mesh(new THREE.TorusGeometry(.60,.066,8,36),rimMat,bomb,0,.26,0);
+  topBand.rotation.x=-Math.PI/2;
+  const baseBand=mesh(new THREE.TorusGeometry(.60,.047,8,36),yellow,bomb,0,-.28,0);
+  baseBand.rotation.x=-Math.PI/2;
+  for(let k=0;k<10;k++){
+    const a=k*Math.PI*2/10;
+    const riv=mesh(geometries.sphere,rimMat,bomb,Math.cos(a)*.612,.02,Math.sin(a)*.612,[.055,.055,.055]);
+    riv.castShadow=false;
+  }
+  mesh(geometries.cylinder,rimMat,bomb,0,.68,0,[.28,.23,.28]);
+  mesh(geometries.cylinder,shellMat,bomb,0,.83,0,[.20,.07,.20]);
+  const fusePath=new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0,.81,0),
+    new THREE.Vector3(.06,.99,.04),
+    new THREE.Vector3(.17,1.14,.01),
+    new THREE.Vector3(.24,1.30,-.08)
+  ]);
+  mesh(new THREE.TubeGeometry(fusePath,14,.075,8,false),mat('#ceb38d',{roughness:.95,metalness:0}),bomb);
+  const hotWick=mesh(geometries.sphere,mat('#fff1a2',{emissive:'#ff9306',emissiveIntensity:5,
+    roughness:.38,metalness:0}),bomb,.24,1.30,-.08,[.115,.115,.115]);
+  hotWick.castShadow=false;
+  const fuseHalo=new THREE.PointLight('#ff9a37',2.0,3,2);fuseHalo.position.set(.24,1.29,-.08);bomb.add(fuseHalo);
+  const spark=hotWick;
+  const fuseSparks=[];
+  for(let i=0;i<7;i++){
+    const dot=mesh(geometries.crystal,basic('#ffe18b',{toneMapped:false}),bomb,.24,1.30,-.08,[.035,.09,.035]);
+    dot.castShadow=false;fuseSparks.push(dot);
+  }
+  // Gold warning seal on the camera-facing side of the shell.
+  const badge=mesh(geometries.cylinder,yellow,bomb,0,.015,.67,[.21,.031,.21]);
+  badge.rotation.x=Math.PI/2;
+  block(bomb,0,-.01,.707,.065,.24,.03,shellMat);
+  block(bomb,0,-.19,.717,.065,.07,.025,shellMat);
+  const blastLight=new THREE.PointLight('#ffbb69',2.4,6.5,2);bomb.add(blastLight);
   const trail=Array.from({length:20},()=> {
     const v=mesh(geometries.sphere,basic('#ffbc5c',{transparent:true,opacity:.6,depthWrite:false,toneMapped:false}),effects,0,0,0,[.3,.3,.3]);
     v.visible=false;v.castShadow=false;return v;
@@ -301,8 +335,14 @@ export function createArena3D(inputCanvas) {
     const bp=world(g.bomb.x,g.bomb.y,1.0+(g.bomb.mode==='flying'?.38:0));
     bomb.position.copy(bp);bomb.rotation.y=t*2;
     bomb.scale.setScalar(g.bomb.mode==='held'?.82:1.05);
-    spark.scale.setScalar(1+.18*Math.sin(t*23));
-    blastLight.intensity=2+Math.sin(t*19)*.7;
+    spark.scale.setScalar(1+.17*Math.sin(t*23));
+    for(let i=0;i<fuseSparks.length;i++){
+      const a=t*18+i*6.283185307/7,r=.17+.10*Math.sin(t*11+i);
+      const q=fuseSparks[i];q.position.set(.24+Math.cos(a)*r,1.34+Math.abs(Math.sin(a*1.4))*.23,-.08+Math.sin(a)*r);
+      q.scale.setScalar(.035+.04*(.5+.5*Math.sin(t*13+i)));q.rotation.y=t*9+i;
+    }
+    blastLight.intensity=2.1+Math.sin(t*19)*.65;
+    fuseHalo.intensity=1.5+Math.sin(t*22)*.8;
     for(let i=0;i<trail.length;i++){
       const p=g.bomb.trail?.[i],o=trail[i];o.visible=!!p&&g.bomb.mode==='flying';
       if(o.visible){o.position.copy(world(p.x,p.y,.58));o.scale.setScalar(clamp(p.t/.32,.03,1)*.25);o.material.opacity=clamp(p.t/.32,0,.75);}
