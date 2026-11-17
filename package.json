@@ -3,6 +3,7 @@
   "version": "9.0.0",
   "private": true,
   "description": "Bomba Sende V9: ortalanmış arena, sol altta çerçevesiz sohbet ve 4 saniyelik tam ekran solması",
+  "dependencies": {"three": "0.160.1"},
   "engines": {
     "node": ">=22"
   },
