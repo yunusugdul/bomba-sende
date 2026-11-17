@@ -3,13 +3,13 @@
 export function createArenaDetailKit(THREE, tools) {
   const {stage, world, block, mesh, track, ring, geometries, lowPower} = tools;
   const SRGB=THREE.SRGBColorSpace;
-  // Friendly, high-contrast stylized 3D arenas; distinctive to Bomba Sende.
+  // Colorful, readable stylized 3D arenas with deeper materials and softer highlights.
   const palettes={
-   'NEON PARK':{floor:'#496a85',tile:'#74a1ba',wall:'#6d5796',top:'#b6a1d4',dark:'#443f68'},
-   'BUZ LABİRENTİ':{floor:'#4b90ad',tile:'#82c8df',wall:'#416a91',top:'#b5eff9',dark:'#295675'},
-   'PORTAL PARTİSİ':{floor:'#745078',tile:'#b47da5',wall:'#705080',top:'#e4add4',dark:'#533760'},
-   'SEK SEK':{floor:'#88654f',tile:'#c79a72',wall:'#796090',top:'#f1c88b',dark:'#574766'},
-   'SON ŞANS':{floor:'#43745d',tile:'#80b783',wall:'#527f72',top:'#c7e4a4',dark:'#36524d'}
+   'NEON PARK':{floor:'#30385d',tile:'#4b6595',wall:'#605184',top:'#8d79b2',dark:'#34334f'},
+   'BUZ LABİRENTİ':{floor:'#305e76',tile:'#4d8ca7',wall:'#4d7794',top:'#86c2d5',dark:'#284e68'},
+   'PORTAL PARTİSİ':{floor:'#4e375f',tile:'#885b95',wall:'#765184',top:'#c38db7',dark:'#443350'},
+   'SEK SEK':{floor:'#63505b',tile:'#9a748a',wall:'#826478',top:'#d3ac85',dark:'#514255'},
+   'SON ŞANS':{floor:'#375a50',tile:'#538a67',wall:'#5c8268',top:'#a6c98a',dark:'#304d44'}
   };
   const material=(c,more={})=>new THREE.MeshPhysicalMaterial({
     color:c,roughness:.46,metalness:.37,clearcoat:.32,clearcoatRoughness:.33,...more
@@ -49,7 +49,7 @@ export function createArenaDetailKit(THREE, tools) {
     for(let y=0;y<h;y+=48)for(let x=0;x<w;x+=64){
       const light=random();
       c.fillStyle=light>.22?palette.tile:palette.floor;
-      c.globalAlpha=light>.22?.15:.12;
+      c.globalAlpha=light>.22?.24:.13;
       c.fillRect(x+2,y+2,60,44);c.globalAlpha=1;
       c.strokeStyle='rgba(15,32,55,.24)';c.lineWidth=1;
       c.strokeRect(x+2,y+2,60,44);
@@ -62,8 +62,18 @@ export function createArenaDetailKit(THREE, tools) {
         c.fillRect(x+12,y+16,40,2);c.fillRect(x+12,y+21,20,1);
       }
     }
+    // Stylized shallow floor seams and soft worn patches; generated once per map.
+    c.save();
+    for(let j=0;j<15;j++){
+      const x=60+random()*900,y=48+random()*475,r=28+random()*75;
+      const patch=c.createRadialGradient(x,y,1,x,y,r);
+      patch.addColorStop(0,j%3===0?'rgba(13,15,34,.12)':'rgba(194,223,255,.075)');
+      patch.addColorStop(1,'rgba(0,0,0,0)');
+      c.fillStyle=patch;c.beginPath();c.ellipse(x,y,r,r*.58,(j%5)*.22,0,Math.PI*2);c.fill();
+    }
+    c.restore();
     // Seam grain and fine surface wear, generated once per map (not per frame).
-    for(let i=0;i<1100;i++){
+    for(let i=0;i<800;i++){
       const x=random()*w,y=random()*h;
       c.strokeStyle=random()>.48?'rgba(236,240,255,.060)':'rgba(0,0,0,.09)';
       c.lineWidth=.6+random()*.5;
@@ -118,7 +128,7 @@ export function createArenaDetailKit(THREE, tools) {
     activeFloorTexture?.dispose();
     const floorMap=floorTexture(map);
     activeFloorTexture=floorMap;
-    const top=material('#ffffff',{map:floorMap,color:'#ffffff',metalness:.05,roughness:.87,clearcoat:.06});
+    const top=material('#ffffff',{map:floorMap,color:'#ffffff',metalness:0,roughness:.92,clearcoat:0});
     const floor=mesh(new THREE.PlaneGeometry(39.9,22.3),top,stage,0,-.003,0);
     floor.rotation.x=-Math.PI/2;floor.castShadow=false;floor.receiveShadow=true;
     // Copper/brass inner boundary, glowing glass fibres and inset hazard markings.
@@ -151,9 +161,9 @@ export function createArenaDetailKit(THREE, tools) {
     // Thick, beveled, readable 3D cartoon fortifications. Same collider footprints,
     // deliberately lifted above the ground so obstacles read as real solid walls.
     const art=palettes[map.name]||palettes['NEON PARK'];
-    const body=material(art.wall,{metalness:.09,roughness:.57,clearcoat:.14});
-    const cap=material(art.top,{metalness:.08,roughness:.47,clearcoat:.24});
-    const darker=material(art.dark,{metalness:.06,roughness:.7});
+    const body=material(art.wall,{metalness:.025,roughness:.75,clearcoat:.07});
+    const cap=material(art.top,{metalness:0,roughness:.72,clearcoat:.06});
+    const darker=material(art.dark,{metalness:0,roughness:.91});
     const accent=unlit(map.glow);
     function roundedWall(width,depth,height){
       const bevel=.11,hw=width/2-.21,hd=depth/2-.21,rad=Math.min(.40,hw*.28,hd*.28);
@@ -171,23 +181,28 @@ export function createArenaDetailKit(THREE, tools) {
     for(const b of map.blocks){
       const x=(b.x+b.w/2-500)/25,z=(b.y+b.h/2-281)/25,w=b.w/25,d=b.h/25;
       shadowAt(x,z,w+2,d+2,.60);
-      const wall=mesh(roundedWall(w,d,2.27),body,stage,x,.20,z);
+      const wall=mesh(roundedWall(w,d,2.68),[cap,body],stage,x,.20,z);
       wall.castShadow=true;wall.receiveShadow=true;
       // Raised bright cap and rim give strong top/side separation at isometric angle.
-      const topCap=mesh(roundedWall(w*.89,d*.87,.22),cap,stage,x,2.37,z);
+      const topCap=mesh(roundedWall(w*.89,d*.87,.18),cap,stage,x,2.83,z);
       topCap.castShadow=true;
-      block(stage,x,2.38,z,w*.62,.06,d*.62,darker);
+      block(stage,x,2.99,z,w*.63,.03,d*.61,darker);
       // Inset highlight stripe along the top, within the existing collision rectangle.
       for(const side of [-1,1]){
-        const line=block(stage,x,2.67,z+side*(d*.38),w*.72,.055,.11,accent);
+        const line=block(stage,x,3.13,z+side*(d*.38),w*.72,.034,.07,accent);
         line.castShadow=false;
-        block(stage,x+side*(w*.39),1.50,z,.085,1.35,d*.77,darker);
-        const sidePaint=block(stage,x+side*(w*.38),1.18,z,.035,.27,d*.49,cap);
+        block(stage,x+side*(w*.39),1.65,z,.085,1.50,d*.77,darker);
+        const sidePaint=block(stage,x+side*(w*.38),1.28,z,.035,.32,d*.49,cap);
         sidePaint.castShadow=false;
       }
-      if(!lowPower)boltsAlong(x,z,w*.74,d*.70,2.74);
+      if(!lowPower)boltsAlong(x,z,w*.74,d*.70,3.15);
       // Visually heavy wall base, no new collision or obstacle outline.
       block(stage,x,.26,z,w*.95,.28,d*.94,darker);
+      // Lighter trim around vertical edges makes the wall read as a solid 3D volume.
+      for(const side of [-1,1]){
+        const post=block(stage,x+side*(w*.32),1.53,z+side*(d*.33),.10,2.15,.10,cap);
+        post.castShadow=false;
+      }
     }
     // Decorative corner columns live outside the effective 2D boundary.
     for(const xx of [-20.55,20.55])for(const zz of [-11.6,11.6]){
