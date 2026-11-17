@@ -118,6 +118,17 @@ export function createArena3D(inputCanvas) {
     c.beginPath();c.arc(500,281,190,0,Math.PI*2);c.stroke();c.setLineDash([]);
     c.strokeStyle=map.glow+'42';c.lineWidth=4;
     c.strokeRect(23,23,954,516);
+    // Low-contrast painted lanes, spawn markings and surface grain. Entirely cosmetic.
+    for(const [x,y,hex] of [[155,120,'#c9ff4f'],[845,442,'#ff67cb'],[155,442,'#77ecff'],[845,120,'#ffd17d']]){
+      c.strokeStyle=hex+'70';c.lineWidth=3;c.beginPath();c.arc(x,y,48,0,Math.PI*2);c.stroke();
+      c.globalAlpha=.3;c.lineWidth=1;c.beginPath();c.arc(x,y,57,0,Math.PI*2);c.stroke();c.globalAlpha=1;
+    }
+    let seed=map.name.length*1729;
+    for(let i=0;i<500;i++){
+      seed=(seed*1664525+1013904223)>>>0;const x=30+seed/4294967296*940;
+      seed=(seed*1664525+1013904223)>>>0;const y=28+seed/4294967296*503;
+      c.fillStyle=i%4===0?'#ffffff0b':'#00000010';c.fillRect(x,y,i%7===0?4:2,1);
+    }
     classicMapTexture?.dispose();
     classicMapTexture=new THREE.CanvasTexture(canvas);
     classicMapTexture.colorSpace=THREE.SRGBColorSpace;
@@ -154,12 +165,57 @@ export function createArena3D(inputCanvas) {
         ice.material.opacity=.42;
       }
     }
+    // Theme-specific peripheral scenery sits OUTSIDE original gameplay bounds.
+    // No obstacles or hitboxes are introduced.
+    const themes={
+      'NEON PARK':['#a58aff','#5e408d'],
+      'BUZ LABİRENTİ':['#a6f4ff','#2f7aab'],
+      'PORTAL PARTİSİ':['#ff8bdb','#9b4898'],
+      'SEK SEK':['#ffd28c','#a76b68'],
+      'SON ŞANS':['#d3ff72','#56966f']
+    };
+    const [highlight,secondary]=themes[map.name]||themes['NEON PARK'];
+    const props=[];
+    const steel=mat('#2d3452',{metalness:.33,roughness:.53});
+    const trim=basic(highlight,{toneMapped:false,transparent:true,opacity:.68,depthWrite:false});
+    // Side light-boxes and futuristic arena-broadcast totems.
+    for(const x of [-20.50,20.50]){
+      for(const z of [-9,-4.5,0,4.5,9]){
+        const stem=block(stage,x,.66,z,.24,1.28,.43,steel);
+        stem.castShadow=false;
+        const signal=block(stage,x,1.25,z,.18,.26,.31,trim);
+        signal.castShadow=false;props.push(signal);
+      }
+    }
+    for(const z of [-11.55,11.55])for(const x of [-15,-7.5,0,7.5,15]){
+      const marker=block(stage,x,.20,z,1.65,.25,.34,steel);marker.castShadow=false;
+      const led=track(stage,x,z,1.50,.065,highlight,.36,.77);
+      props.push(led);
+    }
+    // Ambient decorations are flat or outside bounds to keep the original arena playable.
+    if(map.name==='BUZ LABİRENTİ'){
+      for(const x of [-20.60,20.60])for(const z of [-11.7,11.7]){
+        const crystal=mesh(geometries.crystal,mat('#9beefa',{metalness:.08,roughness:.26,
+          emissive:'#255b85',emissiveIntensity:.2}),stage,x,1.05,z,[.4,1.05,.39]);
+        crystal.castShadow=false;
+      }
+    }
+    if(map.name==='PORTAL PARTİSİ'){
+      for(const x of [-20.65,20.65])for(const z of [-8,8]){
+        const portal=ring(stage,'#ff92f0',.8);portal.position.set(x,1.5,z);
+        portal.rotation.x=0;props.push(portal);
+      }
+    }
+    return {update(time){for(let i=0;i<props.length;i++){
+      if(props[i].material?.opacity!==undefined)
+        props[i].material.opacity=.57+.13*Math.sin(time*1.7+i*.65);
+    }}};
   }
   function resetMap(map,simple=false) {
 
     disposeGroup(stage);
     accent=map.glow; lastMap=map.name;
-    if(simple){stageDetail=null;buildClassicMap(map);return;}
+    if(simple){stageDetail=buildClassicMap(map);return;}
     const palette={
       'NEON PARK':'#2d3262','BUZ LABİRENTİ':'#2d718e','PORTAL PARTİSİ':'#513668',
       'SEK SEK':'#674663','SON ŞANS':'#2e6150'
