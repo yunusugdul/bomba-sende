@@ -62,7 +62,7 @@ function remotePresentation(now){
  const prevBomb=a.state.bomb,curBomb=b.state.bomb;
  const sameProjectile=prevBomb.mode===curBomb.mode&&prevBomb.owner===curBomb.owner;
  const bomb={x:sameProjectile?lerp(prevBomb.x,curBomb.x,blend):curBomb.x,y:sameProjectile?lerp(prevBomb.y,curBomb.y,blend):curBomb.y};
- if(extrapolate){for(let i=0;i<2;i++){const q=newest.state.players[i];players[i].x=clamp(players[i].x+q.vx*extrapolate,R+22,W-R-22);players[i].y=clamp(players[i].y+q.vy*extrapolate,R+22,H-R-22)}if(curBomb.mode==='flying'){bomb.x+=curBomb.vx*extrapolate;bomb.y+=curBomb.vy*extrapolate;}}
+ if(extrapolate){for(let i=0;i<players.length;i++){const q=newest.state.players[i];players[i].x=clamp(players[i].x+q.vx*extrapolate,R+22,W-R-22);players[i].y=clamp(players[i].y+q.vy*extrapolate,R+22,H-R-22)}if(curBomb.mode==='flying'){bomb.x+=curBomb.vx*extrapolate;bomb.y+=curBomb.vy*extrapolate;}}
  return {players,bomb};
 }
 
@@ -518,7 +518,7 @@ function closeHelp(){$('infoDialog').classList.add('hidden');$('infoDialog').set
 // For help: set text safely but preserve user-independent markup in a controlled block.
 const origShowOverlay=showOverlay;
 showOverlay=function(eyebrow,icon,title,description,actions=[],html=false){origShowOverlay(eyebrow,icon,title,description,actions);if(html)$('overlayDesc').innerHTML=description};
-function movementInput(p){if(options.mode==='online'&&p.id===1)return unitOrZero(net.remote.x,net.remote.y);if(p.id===1&&options.mode==='bot')return botInput(p);let x=0,y=0;
+function movementInput(p){if(options.mode==='online'&&p.id>0){const r=net.remotes[p.id]||net.remote;return unitOrZero(r.x||0,r.y||0);}if(p.id===1&&options.mode==='bot')return botInput(p);let x=0,y=0;
  if(p.id===0){x=+(!!keys['KeyD'])-+(!!keys['KeyA']);y=+(!!keys['KeyS'])-+(!!keys['KeyW']);if(touch.joystickId!==null){x=touch.dx;y=touch.dy}}
  else {x=+(!!keys['ArrowRight'])-+(!!keys['ArrowLeft']);y=+(!!keys['ArrowDown'])-+(!!keys['ArrowUp'])}
  return unitOrZero(x,y)}
@@ -534,7 +534,8 @@ function botInput(p){if(SHOOTER_MODE)return shooterBotInput(p);const g=game, me=
  x+=p.x<95?250:p.x>905?-250:0;y+=p.y<90?190:p.y>472?-190:0;
  if(difficulty==='easy'&&Math.sin(g.elapsed*2.4)>0.8){x*=.35;y*=.35}
  return unitOrZero(x,y)}
-function aimOf(p){const op=game.players[1-p.id];if(options.mode==='online'&&p.id===1&&net.remote.aimActive)return unit(net.remote.aimX-p.x,net.remote.aimY-p.y);if(options.mode==='online'&&p.id===0&&mouse.active)return unit(mouse.x-p.x,mouse.y-p.y);if(options.mode==='bot'&&p.id===0&&mouse.active){return unit(mouse.x-p.x,mouse.y-p.y)}
+function aimOf(p){const op=game.players[p.id===0?1:0]||game.players[0];const remote=net.remotes[p.id]||net.remote;
+ if(options.mode==='online'&&p.id>0&&remote.aimActive)return unit(remote.aimX-p.x,remote.aimY-p.y);if(options.mode==='online'&&p.id===0&&mouse.active)return unit(mouse.x-p.x,mouse.y-p.y);if(options.mode==='bot'&&p.id===0&&mouse.active){return unit(mouse.x-p.x,mouse.y-p.y)}
  if(p.id===1&&options.mode==='bot'){let tx=op.x,ty=op.y;const lead=options.difficulty==='hard'?.25:options.difficulty==='normal'?.12:0;tx+=op.vx*lead;ty+=op.vy*lead;return unit(tx-p.x,ty-p.y)}
  // In same-keyboard mode use automatic soft aim towards the other player when nearby.
  const straight=unit(op.x-p.x,op.y-p.y),f=p.face||straight;return unit(straight.x*.79+f.x*.21,straight.y*.79+f.y*.21)}
@@ -847,15 +848,17 @@ function connectRoom(request){
    if(net.code){net.retry=setTimeout(()=>connectRoom({type:'join',code:net.code,token:net.token,name:options.nickname}),2000);}else{roomMessage('Sunucuya erişilemedi. Yeniden denemek için oda kur/katıl düğmesine bas.',true);}
  };
 }
-function leaveOnline(){resetChatVisibility();net.closing=true;if(net.retry){clearTimeout(net.retry);net.retry=null;}netSend({type:'leave'});if(net.ws){net.ws.onclose=null;net.ws.close();net.ws=null;}if(net.code)try{sessionStorage.removeItem('bomba-room-'+net.code)}catch{}net.role=null;net.slot=null;net.code=null;net.token=null;net.players=[];net.connected=false;net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};net.hostAway=false;net.focusPaused=false;net.matchId=0;net.chatUnread=0;net.chatHistory=[];renderChat();$('gameChatPanel').classList.add('hidden');$('chatUnread').classList.add('hidden');closeGameChat();$('roomReady').classList.add('hidden');history.replaceState(null,'',location.pathname);renderRules();}
+function leaveOnline(){resetChatVisibility();net.closing=true;if(net.retry){clearTimeout(net.retry);net.retry=null;}netSend({type:'leave'});if(net.ws){net.ws.onclose=null;net.ws.close();net.ws=null;}if(net.code)try{sessionStorage.removeItem('bomba-room-'+net.code)}catch{}net.role=null;net.slot=null;net.code=null;net.token=null;net.players=[];net.connected=false;net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};net.remotes={};net.hostAway=false;net.focusPaused=false;net.matchId=0;net.chatUnread=0;net.chatHistory=[];renderChat();$('gameChatPanel').classList.add('hidden');$('chatUnread').classList.add('hidden');closeGameChat();$('roomReady').classList.add('hidden');history.replaceState(null,'',location.pathname);renderRules();}
 function updateRoomPanel(){
  if(!net.code)return;
  $('roomReady').classList.remove('hidden');$('roomCode').textContent=net.code;
  $('roomLink').value=location.origin+location.pathname+'?room='+net.code;
- $('roomPlayers').replaceChildren();renderRules();for(let i=0;i<2;i++){
+ $('roomPlayers').replaceChildren();renderRules();for(let i=0;i<requiredPlayers();i++){
   const info=net.players[i],line=document.createElement('div');const name=document.createElement('b');name.textContent=(i===0?'🟢 ':'🩷 ')+(info?.name||'Oyuncu bekleniyor');const state=document.createElement('span');state.textContent=info?.online?'HAZIR':'BEKLENİYOR';state.className=info?.online?'ready':'waiting';line.append(name,state);$('roomPlayers').append(line);
  }
- $('hostStart').classList.toggle('hidden',net.role!=='host');$('hostStart').disabled=!(net.players.length>=2&&net.players[1]?.online);$('hostStart').textContent=$('hostStart').disabled?'İKİNCİ OYUNCU BEKLENİYOR…':'💣 MAÇI BAŞLAT →';
+ $('hostStart').classList.toggle('hidden',net.role!=='host');
+ $('hostStart').disabled=!(net.players.length===requiredPlayers()&&net.players.every(p=>p.online));
+ $('hostStart').textContent=$('hostStart').disabled?'OYUNCULAR BEKLENİYOR ('+net.players.filter(p=>p.online).length+'/'+requiredPlayers()+')':'🔫 MAÇI BAŞLAT →';
  roomMessage(net.role==='host'?'Arkadaşın katılınca maçı başlat.':'Odadasın! Maçı kuran oyuncu başlatacak.');
 }
 function onNetMessage(d){
@@ -875,7 +878,7 @@ function onNetMessage(d){
  if(d.type==='presence'){net.players=d.players||[];if(d.rules){options.rules=safeRules(d.rules);renderRules();}updateRoomPanel();
   if(net.role==='guest'&&game){const away=net.players[0]?.online===false||!!d.hostPaused;if(away&&!net.hostAway)applyHostAwayPause(true,net.players[0]?.online===false?'Oda kurucusunun bağlantısı koptu. Oyun durdu; geri bağlanması bekleniyor.':'Oda kurucusu başka pencereye geçti. Oyun duraklatıldı.');else if(!away&&net.hostAway)applyHostAwayPause(false);}
 
-  if(net.role==='host'&&game){const guestOnline=!!net.players[1]?.online;
+  if(net.role==='host'&&game){const guestOnline=net.players.length===requiredPlayers()&&net.players.slice(1).every(p=>p?.online);
    if(!guestOnline&&!net.freeze){net.freeze=true;if(game.phase!=='paused')net.prevPhase=game.phase;game.phase='paused';net.remote.x=0;net.remote.y=0;pauseMessage('Rakibin bağlantısı koptu. Yeniden bağlandığında maç devam edecek.');}
    else if(guestOnline&&net.freeze){net.freeze=false;if(!net.focusPaused){game.phase=net.prevPhase||'countdown';hideOverlay();}else pauseMessage('Oda kurucusu oyun penceresine dönene kadar maç duraklatıldı.');}
   }
@@ -883,15 +886,24 @@ function onNetMessage(d){
  }
  if(d.type==='start'){
   if(options.mode!=='online')return;
-  if(!Number.isInteger(d.matchId)||d.matchId<=net.matchId)return;net.matchId=d.matchId;net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};newGame();roomMessage(d.rematch?'Rövanş başladı!':'Maç başladı!');return;
+  if(!Number.isInteger(d.matchId)||d.matchId<=net.matchId)return;net.matchId=d.matchId;net.freeze=false;net.focusPaused=false;net.hostAway=false;net.snapshots=[];net.seq=0;net.remote={x:0,y:0,aimX:0,aimY:0,aimActive:false};net.remotes={};newGame();roomMessage(d.rematch?'Rövanş başladı!':'Maç başladı!');return;
  }
  if(d.type==='input'&&net.role==='host'){
-  net.remote={x:d.x||0,y:d.y||0,aimX:d.aimX||0,aimY:d.aimY||0,aimActive:!!d.aimActive};return;
+  const slot=Number.isInteger(d.slot)?d.slot:1;
+  if(slot<=0||slot>=game?.players?.length)return;
+  const remote={x:d.x||0,y:d.y||0,aimX:d.aimX||0,aimY:d.aimY||0,aimActive:!!d.aimActive};
+  net.remotes[slot]=remote;if(slot===1)net.remote=remote;
+  if(game.phase==='countdown'&&WEAPONS[d.weapon]){
+   game.players[slot].weapon=d.weapon;game.players[slot].ammo=WEAPONS[d.weapon].clip;
+  }
+  return;
  }
  if(d.type==='upgrade'&&net.role==='host'&&game?.phase==='upgrade'&&game.upgradeChooser===1){applyUpgrade(d.choice);return;}
  if(d.type==='act'&&net.role==='host'&&game?.phase==='active'){
-  if(d.action==='charge_on')beginCharge(1);else if(d.action==='charge_off')endCharge(1);
-  else if(d.action==='dash')useDash(1);else if(d.action==='parry')useParry(1);else if(d.action==='card')useCard(1);return;
+  const slot=Number.isInteger(d.slot)?d.slot:1;if(slot<1||slot>=game.players.length)return;
+  if(d.action==='charge_on')beginCharge(slot);else if(d.action==='charge_off')endCharge(slot);
+  else if(d.action==='dash')useDash(slot);else if(d.action==='parry')useParry(slot);
+  else if(d.action==='card')useCard(slot);return;
  }
  if(d.type==='state'&&net.role==='guest'){
   if(!d.state?.players||!d.state?.map||d.matchId!==net.matchId)return;
@@ -934,8 +946,8 @@ function onNetMessage(d){
 function sendGuestInput(){if(!game||!net.connected||net.role!=='guest')return;
  let x=+(!!keys.KeyD)-+(!!keys.KeyA),y=+(!!keys.KeyS)-+(!!keys.KeyW);
  if(touch.joystickId!==null){x=touch.dx;y=touch.dy;}if(isGameChatActive()){x=0;y=0;}
- const v=unitOrZero(x,y),p=game.players[1];
- netSend({type:'input',x:v.x,y:v.y,aimX:mouse.active?mouse.x:game.players[0].x,aimY:mouse.active?mouse.y:game.players[0].y,aimActive:mouse.active});
+ const v=unitOrZero(x,y),p=game.players[net.slot]||game.players[1];
+ netSend({type:'input',x:v.x,y:v.y,aimX:mouse.active?mouse.x:game.players[0].x,aimY:mouse.active?mouse.y:game.players[0].y,aimActive:mouse.active,weapon:options.weapon});
 }
 function touchAct(action){if(options.mode==='online'&&net.role==='guest'){netSend({type:'act',action});return;}
  const id=0;if(action==='charge_on')beginCharge(id);else if(action==='charge_off')endCharge(id);else if(action==='dash')useDash(id);else if(action==='parry')useParry(id);else if(action==='card')useCard(id);
@@ -963,7 +975,7 @@ function init(){
  $('createRoom').addEventListener('click',()=>{if(!canOnline())return;options.nickname=$('nick').value.trim().slice(0,14)||'KAOS KRALI';try{localStorage.setItem('bomba-nickname',options.nickname)}catch{}connectRoom({type:'create',name:options.nickname,rules:options.rules})});
  $('joinRoom').addEventListener('click',()=>joinFromInput());$('joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')joinFromInput()});
  $('copyInvite').addEventListener('click',async()=>{const url=$('roomLink').value;try{await navigator.clipboard.writeText(url);roomMessage('Davet bağlantısı kopyalandı! ✓')}catch{const el=$('roomLink');el.select();document.execCommand('copy');roomMessage('Bağlantı seçildi; Ctrl+C ile kopyala.')}});
- $('hostStart').addEventListener('click',()=>{if(net.role==='host'&&net.players.length===2&&net.players[1].online)netSend({type:'start'})});
+ $('hostStart').addEventListener('click',()=>{if(net.role==='host'&&net.players.length===requiredPlayers()&&net.players.every(p=>p.online))netSend({type:'start'})});
  $('leaveRoom').addEventListener('click',()=>{leaveOnline();roomMessage('Odadan ayrıldın. Yeni oda için harita ve mod seçebilirsin.');$('roomReady').classList.add('hidden')});
  $('lobbyChatForm').addEventListener('submit',e=>{e.preventDefault();sendChat($('lobbyChatInput'));});$('gameChatForm').addEventListener('submit',e=>{e.preventDefault();sendChat($('gameChatInput'));closeGameChat();});
  $('chatToggle').addEventListener('click',toggleGameChat);$('chatClose').addEventListener('click',closeGameChat);
