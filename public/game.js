@@ -270,13 +270,13 @@ function shooterFire(p){
  snd('shot',p.id===(options.mode==='online'?net.slot:0)? .70:.40,p.weapon);
  if(p.ammo===0){shooterReload(p.id);p.shooting=true;}
 }
-function shooterHit(p,owner,x,y){
+function shooterHit(p,owner,x,y,damage=SHOOTER_DAMAGE){
  const g=game;
  if(p.dead||p.invulnerable>0)return;
  if(p.shieldTime>0||p.parryTime>0){
   ring(x,y,'#75e8ff',36,.19);snd('parry',.21);return;
  }
- p.hp=Math.max(0,p.hp-(arguments.length>4?arguments[4]:SHOOTER_DAMAGE));p.hitFlash=.24;
+ p.hp=Math.max(0,p.hp-damage);p.hitFlash=.24;
  g.stats.hits[owner]++;burst(x,y,p.color,18,165);ring(x,y,'#fff1b0',35,.22);
  g.hitFx={x,y,t:.28,color:p.color};shakes=Math.max(shakes,4);
  snd('damage',p.id===0?.7:.3);
@@ -325,6 +325,40 @@ function shooterAdvanceBullets(dt){
  }
  g.bullets=g.bullets.filter(b=>b.t>0);
 }
+function tickPowerups(dt){
+ const g=game;if(g.phase!=='active')return;
+ if(g.powerup){
+  g.powerup.t-=dt;
+  if(g.powerup.t<=0){g.powerup=null;g.powerDelay=4;}
+ }else{
+  g.powerDelay-=dt;
+  if(g.powerDelay<=0){
+   const candidates=[];
+   for(let y=88;y<=474;y+=64)for(let x=90;x<=910;x+=76){
+    if(safeCardSpawn(g,{x,y}))candidates.push({x,y});
+   }
+   if(candidates.length){
+    const place=candidates[Math.floor(Math.random()*candidates.length)];
+    const types=Object.keys(POWERUPS);
+    g.powerup={...place,type:types[Math.floor(Math.random()*types.length)],t:12};
+   }
+   g.powerDelay=8;
+  }
+ }
+ for(const p of g.players){
+  if(p.dead||!g.powerup)continue;
+  if(Math.hypot(p.x-g.powerup.x,p.y-g.powerup.y)>p.r+25)continue;
+  const type=g.powerup.type;
+  if(type==='heal')p.hp=Math.min(SHOOTER_HP,p.hp+45);
+  if(type==='speed')p.buffSpeedTime=5;
+  if(type==='shield')p.shieldTime=Math.max(p.shieldTime,2.3);
+  if(type==='boost')p.buffDamageTime=5;
+  burst(g.powerup.x,g.powerup.y,POWERUPS[type].color,21,120);
+  ring(g.powerup.x,g.powerup.y,POWERUPS[type].color,65,.38);
+  alertToast(p.name+' • '+POWERUPS[type].name,1.1);snd('card',.6);
+  g.powerup=null;g.powerDelay=8;break;
+ }
+}
 function tickShooter(dt){
  globalTime+=dt;
  for(const pt of particles){pt.x+=pt.vx*dt;pt.y+=pt.vy*dt;pt.vy+=150*dt;pt.t-=dt;}
@@ -336,6 +370,8 @@ function tickShooter(dt){
  if(calloutTimer>0){calloutTimer-=dt;if(calloutTimer<=0)$('eventCallout').classList.add('hidden');}
  if(!game)return;
  const g=game;
+ if(g.eliminationFx){g.eliminationFx.t-=dt;if(g.eliminationFx.t<=0)g.eliminationFx=null;}
+ if(g.hitFx){g.hitFx.t-=dt;if(g.hitFx.t<=0)g.hitFx=null;}
  if(g.phase==='countdown'){g.phaseTime-=dt;if(g.phaseTime<=0){g.phase='active';snd('ready');alertToast('🔫 ÇATIŞMA BAŞLADI!',1);}return;}
  if(g.phase==='roundwin'){
   g.phaseTime-=dt;
@@ -348,6 +384,7 @@ function tickShooter(dt){
  }
  if(g.phase!=='active')return;
  g.elapsed+=dt;
+ tickPowerups(dt);
  const steps=Math.max(1,Math.ceil(dt/.008)),step=dt/steps;
  if(options.mode==='bot'){
   const bot=g.players[1],human=g.players[0];
@@ -360,13 +397,17 @@ function tickShooter(dt){
    p.fireCD=Math.max(0,p.fireCD-step);
    p.muzzle=Math.max(0,p.muzzle-step);
    p.hitFlash=Math.max(0,p.hitFlash-step);
+   p.recoil=Math.max(0,(p.recoil||0)-step*.9);
+   p.buffSpeedTime=Math.max(0,(p.buffSpeedTime||0)-step);
+   p.buffDamageTime=Math.max(0,(p.buffDamageTime||0)-step);
    p.invulnerable=Math.max(0,p.invulnerable-step);
-   if(p.dead){p.respawn-=step;if(p.respawn<=0){
-      p.dead=false;p.hp=SHOOTER_HP;p.ammo=SHOOTER_CLIP;p.reload=0;
-      p.x=p.id?850:150;p.y=281;p.vx=p.vy=0;p.invulnerable=.9;
+   if(p.dead){p.respawn-=step;if(p.respawn<=0&&g.rules.battleMode!=='duel'){
+      p.dead=false;p.hp=SHOOTER_HP;p.ammo=playerWeapon(p).clip;p.reload=0;
+      const start=[[155,120],[845,442],[155,442],[845,120]][p.id];
+      p.x=start[0];p.y=start[1];p.vx=p.vy=0;p.invulnerable=1.1;
       burst(p.x,p.y,p.color,14,130);
      }continue;}
-   if(p.reload>0){p.reload-=step;if(p.reload<=0){p.reload=0;p.ammo=SHOOTER_CLIP;}}
+   if(p.reload>0){p.reload-=step;if(p.reload<=0){p.reload=0;p.ammo=playerWeapon(p).clip;}}
    updatePlayer(p,step);
    if(p.shooting)shooterFire(p);
   }
@@ -492,7 +533,7 @@ function updateBomb(dt){const g=game,b=g.bomb;if(b.mode==='held'){const p=g.play
 }
 function circleRectResolve(p,b){const nx=clamp(p.x,b.x,b.x+b.w),ny=clamp(p.y,b.y,b.y+b.h);let dx=p.x-nx,dy=p.y-ny;let d=Math.hypot(dx,dy);if(d<p.r){if(d<.001){const left=Math.abs(p.x-b.x),right=Math.abs(p.x-(b.x+b.w)),top=Math.abs(p.y-b.y),bottom=Math.abs(p.y-(b.y+b.h));const min=Math.min(left,right,top,bottom);if(min===left)p.x=b.x-p.r;else if(min===right)p.x=b.x+b.w+p.r;else if(min===top)p.y=b.y-p.r;else p.y=b.y+b.h+p.r;p.vx=p.vy=0;return}const normal={x:dx/d,y:dy/d};p.x+=normal.x*(p.r-d+0.2);p.y+=normal.y*(p.r-d+0.2);const dot=p.vx*normal.x+p.vy*normal.y;if(dot<0){p.vx-=dot*normal.x;p.vy-=dot*normal.y}}}
 function updatePlayer(p,dt){p.dashCD=Math.max(0,p.dashCD-dt);p.parryCD=Math.max(0,p.parryCD-dt);p.dashTime=Math.max(0,p.dashTime-dt);p.parryTime=Math.max(0,p.parryTime-dt);p.shieldTime=Math.max(0,p.shieldTime-dt);p.stun=Math.max(0,p.stun-dt);p.portalCD=Math.max(0,p.portalCD-dt);
- const i=movementInput(p);if(Math.hypot(i.x,i.y)>.12)p.face={x:i.x,y:i.y};p.aim=aimOf(p);let speed=275*(p.upgrades.includes('runner')?1.08:1);if(game.rules.panic&&game.fuse<5)speed*=1.12;
+ const i=movementInput(p);if(Math.hypot(i.x,i.y)>.12)p.face={x:i.x,y:i.y};p.aim=aimOf(p);let speed=275*(p.upgrades.includes('runner')?1.08:1)*(SHOOTER_MODE&&p.buffSpeedTime>0?1.45:1);if(game.rules.panic&&game.fuse<5)speed*=1.12;
  if(game.chaos==='turbo')speed*=1.4;
  let icy=game.map.features.some(f=>f.kind==='ice'&&Math.hypot(p.x-f.x,p.y-f.y)<f.r);
  // Snow slows movement by exactly 50% only while physically inside a patch.
@@ -506,7 +547,18 @@ function updatePlayer(p,dt){p.dashCD=Math.max(0,p.dashCD-dt);p.parryCD=Math.max(
  for(const f of game.map.features){if(f.kind==='bumper'){const d=Math.hypot(p.x-f.x,p.y-f.y);if(d<p.r+f.r){const dir=unit(p.x-f.x,p.y-f.y);p.x=f.x+dir.x*(p.r+f.r+2);p.y=f.y+dir.y*(p.r+f.r+2);p.vx=dir.x*460;p.vy=dir.y*460;if(Math.random()<.28)burst(p.x,p.y,'#ffe989',4,75)}}if(f.kind==='portal'&&p.portalCD<=0&&Math.hypot(p.x-f.x,p.y-f.y)<f.r*.65){const target=game.map.features.find((v,j)=>v.kind==='portal'&&v.to!==f.to);if(target){burst(p.x,p.y,'#b399ff',18,160);p.x=clamp(target.x+rand(-30,30),60,940);p.y=clamp(target.y+rand(-30,30),60,502);p.portalCD=1.45;burst(p.x,p.y,'#b399ff',18,160);snd('card',.5)}}}
  if(p.charging&&game.holder===p.id&&game.bomb.mode==='held')p.charge=Math.min(.95,p.charge+dt*(p.upgrades.includes('charge')?1.2:1));
 }
-function adjustPlayerOverlap(){const a=game.players[0],b=game.players[1],d=dist(a,b);if(d<a.r+b.r+3){const dir=unit(b.x-a.x,b.y-a.y),s=(a.r+b.r+3-d)/2;a.x-=dir.x*s;b.x+=dir.x*s;a.y-=dir.y*s;b.y+=dir.y*s}}
+function adjustPlayerOverlap(){
+ const players=game.players;
+ for(let i=0;i<players.length;i++)for(let j=i+1;j<players.length;j++){
+  const a=players[i],b=players[j];if(a.dead||b.dead)continue;
+  const d=dist(a,b);
+  if(d<a.r+b.r+3){
+   const dir=d>1e-5?unit(b.x-a.x,b.y-a.y):{x:1,y:0};
+   const n=(a.r+b.r+3-d)/2;
+   a.x-=dir.x*n;b.x+=dir.x*n;a.y-=dir.y*n;b.y+=dir.y*n;
+  }
+ }
+}
 // Spawning safety is the ONLY gameplay fix in the 3D update: preserve pickup types,
 // timings and collisions, but keep the card footprint away from solids and players.
 // Bumpers are circular obstacles and were not considered by the original blocked() test.
