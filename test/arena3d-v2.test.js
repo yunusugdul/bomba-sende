@@ -43,7 +43,7 @@ test('Explosion draws for at least one second before the result overlay',()=>{
 test('Bright stylized arena is visibly 3D, rounded and retains collider footprints',()=>{
  assert.match(detail,/palettes=\{/);
  assert.match(detail,/new THREE\.ExtrudeGeometry\(shape/);
- assert.match(detail,/roundedWall\(w,d,2\.27\)/);
+ assert.match(detail,/roundedWall\(w,d,2\.68\)/);
  assert.match(view,/block\(stage,cx,1\.2,cz,w,2\.4,d,wallBody\)/);
  assert.match(view,/key\.castShadow = true/);
  assert.match(view,/const humans=\[makeHuman/);
