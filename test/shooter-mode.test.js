@@ -89,7 +89,7 @@ test('shooting consumes ammo, adds one network-visible projectile and records sc
  const src=extract('function shooterFire(p){','\nfunction shooterHit(');
  const g={phase:'active',shotsFired:[0,0],bullets:[],stats:{throws:[0,0]}};
  const p={id:0,x:150,y:281,dead:false,fireCD:0,reload:0,ammo:16,aim:{x:1,y:0},weapon:'pistol'};
- const fire=Function('game','aimOf','burst','snd','shooterReload','SHOOTER_CLIP','SHOOTER_DAMAGE','playerWeapon','options','net',src+'\nreturn shooterFire;')(
+ const fire=Function('game','aimOf','burst','snd','shooterReload','SHOOTER_CLIP','SHOOTER_DAMAGE','playerWeapon','options','net','let shakes=0;'+src+'\nreturn shooterFire;')(
   g,()=>({x:1,y:0}),()=>{},()=>{},()=>{},16,20,()=>({rate:.17,clip:16,range:.96,speed:950,damage:20,pellets:1,spread:0,color:'#fff0a6',recoil:.12}),{mode:'bot'},{slot:0});
  fire(p);
  assert.equal(g.bullets.length,1);assert.equal(g.bullets[0].owner,0);
