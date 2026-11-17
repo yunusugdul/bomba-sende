@@ -12,7 +12,8 @@ const pkg=require('../package.json');
 test('Three.js uses local package, not an external CDN',()=>{
  assert.equal(pkg.dependencies.three,'0.160.1');
  assert.match(three,/from '\/vendor\/three\.module\.js'/);
- assert.match(server,/\/vendor\/three\.module\.js/);
+ assert.match(server,/const threeBuild=/);
+ assert.match(server,/const addon=/);
 });
 test('2D simulation and WebSocket networking remain intact',()=>{
  assert.match(game,/const W=1000,H=562,R=21/);
