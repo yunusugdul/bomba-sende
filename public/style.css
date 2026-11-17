@@ -181,3 +181,7 @@ body.is-playing .arena-chat-form button{padding:5px 6px}
  body.is-playing .arena-chat-form{position:relative;left:auto;right:auto;bottom:auto}
 }
 @media(prefers-reduced-motion:reduce){body.is-playing .arena-chat{transition:none}}
+
+/* Three.js is rendered below the original transparent, pointer-sensitive HUD canvas. */
+.arena-shell > canvas#arena{position:relative;z-index:1;background:transparent;}
+.arena-shell > canvas.arena-webgl{position:absolute!important;inset:0;width:100%!important;height:100%!important;z-index:0;pointer-events:none;display:block;object-fit:fill;aspect-ratio:auto!important;}
