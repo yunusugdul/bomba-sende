@@ -18,6 +18,7 @@ export function createArenaDetailKit(THREE, tools) {
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=SRGB;return texture;
   }
   const ambientOcclusion=makeRadial();
+  let activeFloorTexture=null;
   function shadowAt(x,z,w,d,alpha=.7) {
     const o=mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshBasicMaterial({
       map:ambientOcclusion,color:'#000000',transparent:true,opacity:alpha,
@@ -102,7 +103,9 @@ export function createArenaDetailKit(THREE, tools) {
   }
   function build(map) {
     const visuals=[];
+    activeFloorTexture?.dispose();
     const floorMap=floorTexture(map);
+    activeFloorTexture=floorMap;
     const top=material('#ffffff',{map:floorMap,color:'#ffffff',metalness:.27,roughness:.75});
     const floor=mesh(new THREE.PlaneGeometry(39.9,22.3),top,stage,0,-.003,0);
     floor.rotation.x=-Math.PI/2;floor.castShadow=false;floor.receiveShadow=true;
@@ -204,5 +207,5 @@ export function createArenaDetailKit(THREE, tools) {
     }
     return {update(t){for(const fn of visuals)fn(t);}};
   }
-  return {build,dispose(){ambientOcclusion.dispose();}};
+  return {build,dispose(){activeFloorTexture?.dispose();ambientOcclusion.dispose();}};
 }
