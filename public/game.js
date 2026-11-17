@@ -163,7 +163,34 @@ function updatePlayer(p,dt){p.dashCD=Math.max(0,p.dashCD-dt);p.parryCD=Math.max(
  if(p.charging&&game.holder===p.id&&game.bomb.mode==='held')p.charge=Math.min(.95,p.charge+dt*(p.upgrades.includes('charge')?1.2:1));
 }
 function adjustPlayerOverlap(){const a=game.players[0],b=game.players[1],d=dist(a,b);if(d<a.r+b.r+3){const dir=unit(b.x-a.x,b.y-a.y),s=(a.r+b.r+3-d)/2;a.x-=dir.x*s;b.x+=dir.x*s;a.y-=dir.y*s;b.y+=dir.y*s}}
-function spawners(dt){const g=game;if(!g.rules.cards)return;if(!g.card){g.cardDelay-=dt;if(g.cardDelay<=0){const spots=[{x:500,y:118},{x:500,y:440},{x:180,y:150},{x:825,y:410},{x:500,y:285},{x:720,y:105},{x:290,y:444}].filter(p=>!blocked(p.x,p.y,32)&&g.players.every(v=>dist(p,v)>80));if(spots.length){const pos=choose(spots);g.card={x:pos.x,y:pos.y,type:choose(Object.keys(CARDS)),t:0};ring(pos.x,pos.y,CARDS[g.card.type].color,65,.7)}else g.cardDelay=1}
+// Spawning safety is the ONLY gameplay fix in the 3D update: preserve pickup types,
+// timings and collisions, but keep the card footprint away from solids and players.
+// Bumpers are circular obstacles and were not considered by the original blocked() test.
+function safeCardSpawn(g,pos){
+ const margin=38; // 23px pickup radius + 15px visual / collision clearance
+ if(!Number.isFinite(pos.x)||!Number.isFinite(pos.y))return false;
+ if(pos.x<22+margin||pos.x>W-22-margin||pos.y<22+margin||pos.y>H-22-margin)return false;
+ if(g.players.some(p=>Math.hypot(p.x-pos.x,p.y-pos.y)<Math.max(90,p.r+margin+20)))return false;
+ // Circle-to-rectangle check: covers the entire raised 3D obstacle footprint.
+ for(const b of g.map.blocks){
+  const nx=clamp(pos.x,b.x,b.x+b.w),ny=clamp(pos.y,b.y,b.y+b.h);
+  if(Math.hypot(pos.x-nx,pos.y-ny)<margin)return false;
+ }
+ for(const f of g.map.features){
+  // In particular, never spawn inside a bumper or portal or in the visible ice decal.
+  if(Math.hypot(pos.x-f.x,pos.y-f.y)<f.r+margin)return false;
+ }
+ return true;
+}
+function spawners(dt){const g=game;if(!g.rules.cards)return;if(!g.card){g.cardDelay-=dt;if(g.cardDelay<=0){const candidates=[{x:500,y:118},{x:500,y:440},{x:180,y:150},{x:825,y:410},{x:500,y:285},{x:720,y:105},{x:290,y:444}];
+ // Prefer the original spawn slots; only use a deterministic fallback grid if all are unsafe.
+ let spots=candidates.filter(p=>safeCardSpawn(g,p));
+ if(!spots.length){
+  for(let y=86;y<=H-86;y+=65)for(let x=85;x<=W-85;x+=72){
+   const p={x,y};if(safeCardSpawn(g,p))spots.push(p);
+  }
+ }
+if(spots.length){const pos=choose(spots);g.card={x:pos.x,y:pos.y,type:choose(Object.keys(CARDS)),t:0};ring(pos.x,pos.y,CARDS[g.card.type].color,65,.7)}else g.cardDelay=1}
  }else{g.card.t+=dt;for(const p of g.players){if(Math.hypot(p.x-g.card.x,p.y-g.card.y)<p.r+23){p.card=g.card.type;burst(g.card.x,g.card.y,CARDS[g.card.type].color,18,140);snd('card',.75);alertToast((p.id===0?'✦ KART ALDIN: ':'✦ RAKİP KART ALDI: ')+CARDS[p.card].name);g.card=null;g.cardDelay=4.8;break}}}}
 function chaosStep(dt){
  const g=game;
