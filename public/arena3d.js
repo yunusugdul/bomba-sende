@@ -73,8 +73,8 @@ export function createArena3D(inputCanvas) {
   function block(parent,x,y,z,w,h,d,material) {
     return mesh(geometries.box,material,parent,x,y,z,[w,h,d]);
   }
-  function track(parent,x,z,w,d,hex,height=.055) {
-    return block(parent,x,height,z,w,.055,d,basic(hex,{toneMapped:false}));
+  function track(parent,x,z,w,d,hex,height=.055,opacity=1) {
+    return block(parent,x,height,z,w,.055,d,basic(hex,{toneMapped:false,transparent:opacity<1,opacity,depthWrite:opacity===1}));
   }
   function ring(parent,hex,radius=1) {
     const m=mesh(geometries.torus,basic(hex,{transparent:true,opacity:.85,depthWrite:false,toneMapped:false}),parent);
@@ -96,8 +96,8 @@ export function createArena3D(inputCanvas) {
     deck.castShadow=false;
     block(stage,0,-.075,0,40.2,.12,22.6,arenaFloor).castShadow=false;
     // The render has depth, but every obstacle footprint is identical to the 2D collider.
-    for(let x=-19.6;x<=19.7;x+=1.6)track(stage,x,0,.022,22.48,'#ffffff',-.008).material.opacity=.07;
-    for(let z=-10.9;z<=11;z+=1.6)track(stage,0,z,40,.022,'#ffffff',-.008).material.opacity=.07;
+    for(let x=-19.6;x<=19.7;x+=1.6)track(stage,x,0,.022,22.48,'#ffffff',-.008,.065);
+    for(let z=-10.9;z<=11;z+=1.6)track(stage,0,z,40,.022,'#ffffff',-.008,.065);
     const edge=basic(map.glow,{toneMapped:false});
     for(const [x,z,w,d] of [[0,-11.25,40.4,.1],[0,11.25,40.4,.1],[-20.05,0,.1,22.55],[20.05,0,.1,22.55]])
       track(stage,x,z,w,d,map.glow,.13);
@@ -127,7 +127,7 @@ export function createArena3D(inputCanvas) {
         pad.castShadow=false;
         const a=ring(stage,'#b69bff',radius);a.position.set(q.x,.15,q.z);
         const b=ring(stage,'#ff7dc6',radius*.73);b.position.set(q.x,.18,q.z);
-        f._visual=[a,b];
+        // Keep Three.js mesh references out of the game's JSON-serialized map.
       } else if(f.kind==='bumper') {
         mesh(geometries.cylinder,mat('#ba7d48',{metalness:.55}),stage,q.x,.22,q.z,[radius,.43,radius]);
         const rim=ring(stage,'#ffdd87',radius*1.06);rim.position.set(q.x,.48,q.z);
