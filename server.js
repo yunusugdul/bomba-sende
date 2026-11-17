@@ -138,12 +138,12 @@ function upgrade(req,socket,head){
   ws.pingTimer=setInterval(()=>{if(ws.closed){clearInterval(ws.pingTimer);return;}try{socket.write(wsFrame(9,'ping'));}catch{}},25000);
   socket.on('close',()=>clearInterval(ws.pingTimer));
 }
-const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.svg':'image/svg+xml'};
+const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.svg':'image/svg+xml','.wav':'audio/wav'};
 const server=http.createServer((req,res)=>{
   if(req.url==='/health'){res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({ok:true,rooms:rooms.size}));return;}
   let pathname;try{pathname=new URL(req.url,'http://localhost').pathname;}catch{res.writeHead(400).end();return;}
   if(pathname==='/')pathname='/index.html';
-  const pub=new Set(['/index.html','/favicon.svg','/game.js','/style.css','/arena3d.js','/arena3d-detail.js']);
+  const pub=new Set(['/index.html','/favicon.svg','/game.js','/style.css','/arena3d.js','/arena3d-detail.js','/audio/pistol-fire.wav']);
   // Allow only the renderer and its official local Three.js postprocess addons.
   const threeBuild=/^\/vendor\/three\.(?:module|core)\.js$/.test(pathname);
   const addon=/^\/vendor\/addons\/(?:postprocessing|shaders)\/[A-Za-z][A-Za-z0-9.-]*\.js$/.test(pathname);
