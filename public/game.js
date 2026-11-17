@@ -59,6 +59,9 @@ function remotePresentation(now){
 }
 
 let game=null, animLast=0, lastHud=0, keys=Object.create(null), muted=false,audio=null,gunNoiseBuffer=null;
+let gunshotBuffer=null,gunshotDecoding=false;
+// CC0 field-recording derived sound is bundled locally; never depend on third-party CDNs.
+const gunshotFile=fetch('/audio/pistol-fire.wav').then(r=>{if(!r.ok)throw Error('missing gunshot file');return r.arrayBuffer();}).catch(()=>null);
 const CHAT_FADE_MS=4000;
 let chatFadeTimer=null;
 function showChatTemporarily(){
@@ -80,7 +83,15 @@ let mouse={x:760,y:280,active:false};
 let touch={dx:0,dy:0,joystickId:null,throwDown:false};
 let particles=[],rings=[],shakes=0,globalTime=0,toastTimer=0,calloutTimer=0;
 function snd(type,volume=1){if(muted)return;try{audio??=new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();
+  if(!gunshotDecoding){gunshotDecoding=true;gunshotFile.then(bytes=>bytes?audio.decodeAudioData(bytes.slice(0)):null)
+    .then(buffer=>{gunshotBuffer=buffer;}).catch(()=>{});}
   if(type==='shot'){
+    if(gunshotBuffer){
+      const source=audio.createBufferSource(),gain=audio.createGain();source.buffer=gunshotBuffer;
+      source.playbackRate.value=.95+Math.random()*.1;
+      gain.gain.setValueAtTime(.52*volume,audio.currentTime);
+      source.connect(gain).connect(audio.destination);source.start();return;
+    }
     const rate=audio.sampleRate;
     if(!gunNoiseBuffer){
       const size=Math.floor(rate*.105);
@@ -336,7 +347,7 @@ function updateShooterHUD(){
  const g=game,self=options.mode==='online'&&net.slot===1?1:0,p=g.players[self];
  for(let i=0;i<2;i++){
   const pp=g.players[i];$('score'+i).textContent=g.score[i];
-  $('player'+i+'Status').textContent=pp.dead?'YENİDEN DOĞUYOR':Math.ceil(pp.hp)+' / '+SHOOTER_HP+' CAN';
+  $('player'+i+'Status').textContent=pp.dead?'TUR BİTTİ':Math.ceil(pp.hp)+' / '+SHOOTER_HP+' CAN';
   const hpFill=$('shooterHp'+i);if(hpFill){hpFill.style.width=(pp.hp/SHOOTER_HP*100)+'%';hpFill.style.background=pp.hp<35?'#ff526b':i===0?'#c9ff49':'#ff6bb9';}
   $('scoreBox'+i).style.boxShadow=pp.hitFlash>0?'inset 0 0 20px #ff728060':'none';
  }
