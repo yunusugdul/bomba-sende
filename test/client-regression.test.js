@@ -20,5 +20,5 @@ test('shared aim direction comes from authoritative snapshot',()=>{
 test('invite links join automatically and no remix branding remains',()=>{
  assert.match(js,/connectRoom\(\{type:'join',code,token:tok,name:options\.nickname\}\)/);
  assert.doesNotMatch(html,/REMIX/);
- assert.match(html,/ARKADAŞINA MEYDAN OKU/);
+ assert.match(html,/SİLAHINI KUŞAN, ARENAYA GİR/);
 });
