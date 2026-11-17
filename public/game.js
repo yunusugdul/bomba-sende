@@ -4,7 +4,8 @@
 (() => {
 const W=1000,H=562,R=21, TAU=Math.PI*2;
 // Staging-exclusive 3D arena deathmatch. Original game logic remains as a fallback in main.
-const SHOOTER_MODE=true, SHOOTER_HP=100, SHOOTER_DAMAGE=20, SHOOTER_CLIP=16, SHOOTER_KILLS=10;
+const SHOOTER_MODE=true, SHOOTER_HP=100, SHOOTER_DAMAGE=20, SHOOTER_CLIP=16;
+// Each selected 3/5/7 round is won by one elimination. No timed countdown while fighting.
 const $=id=>document.getElementById(id);
 const canvas=$('arena'), ctx=canvas.getContext('2d',{alpha:true});
 // The simulation remains 2D. Three.js only renders an isometric view of its state.
@@ -17,11 +18,11 @@ const rand=(a,b)=>a+Math.random()*(b-a), choose=a=>a[Math.floor(Math.random()*a.
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const unit=(x,y)=>{let n=Math.hypot(x,y);return n>.00001?{x:x/n,y:y/n}:{x:1,y:0}};
 const MAPS=[
- {name:'NEON PARK',glow:'#a591ff',floor:'#15152e',blocks:[{x:320,y:95,w:70,h:128},{x:620,y:337,w:70,h:128},{x:450,y:233,w:100,h:96}],features:[]},
+ {name:'NEON PARK',glow:'#a591ff',floor:'#15152e',blocks:[{x:350,y:95,w:70,h:128},{x:581,y:337,w:70,h:128},{x:450,y:233,w:100,h:96}],features:[]},
  {name:'BUZ LABİRENTİ',glow:'#79edff',floor:'#112b39',blocks:[{x:318,y:153,w:64,h:246},{x:616,y:153,w:64,h:246},{x:451,y:75,w:98,h:68},{x:451,y:422,w:98,h:65}],features:[]},
- {name:'PORTAL PARTİSİ',glow:'#ff7dc6',floor:'#25142f',blocks:[{x:330,y:112,w:65,h:145},{x:605,y:306,w:65,h:145},{x:451,y:242,w:98,h:78}],features:[{kind:'portal',x:182,y:138,r:36,to:1},{kind:'portal',x:825,y:425,r:36,to:0}]},
+ {name:'PORTAL PARTİSİ',glow:'#ff7dc6',floor:'#25142f',blocks:[{x:383,y:112,w:65,h:145},{x:552,y:306,w:65,h:145},{x:451,y:242,w:98,h:78}],features:[{kind:'portal',x:182,y:138,r:36,to:1},{kind:'portal',x:825,y:425,r:36,to:0}]},
  {name:'SEK SEK',glow:'#ffd16e',floor:'#29212e',blocks:[{x:260,y:200,w:110,h:65},{x:630,y:300,w:110,h:65},{x:465,y:60,w:70,h:95},{x:465,y:407,w:70,h:95}],features:[{kind:'bumper',x:500,y:281,r:29},{kind:'bumper',x:146,y:283,r:28},{kind:'bumper',x:854,y:281,r:28}]},
- {name:'SON ŞANS',glow:'#d8ff52',floor:'#142226',blocks:[{x:300,y:92,w:75,h:121},{x:625,y:350,w:75,h:121},{x:475,y:215,w:50,h:133}],features:[{kind:'ice',x:500,y:280,r:123},{kind:'bumper',x:150,y:440,r:31},{kind:'bumper',x:850,y:123,r:31}]}
+ {name:'SON ŞANS',glow:'#d8ff52',floor:'#142226',blocks:[{x:325,y:92,w:75,h:121},{x:600,y:350,w:75,h:121},{x:468,y:213,w:64,h:137}],features:[{kind:'ice',x:500,y:280,r:123},{kind:'bumper',x:150,y:440,r:31},{kind:'bumper',x:850,y:123,r:31}]}
 ];
 const CARDS={blink:{name:'IŞINLAN',emoji:'🌀',color:'#ab92ff'},frost:{name:'DONDUR',emoji:'❄️',color:'#75e8ff'},shield:{name:'KALKAN',emoji:'🛡️',color:'#e0f27e'}};
 const UPGRADES={rocket:{name:'ROKET MOTORU',emoji:'🚀',desc:'Bomba uçuş hızı +%22.'},magnet:{name:'MANYETİK',emoji:'🧲',desc:'Uçarken rakibe doğru hafifçe yönelir.'},bank:{name:'SEKME USTASI',emoji:'🎱',desc:'Bomba 3 yerine 5 kez sekebilir.'},dash:{name:'SERİ ATIL',emoji:'⚡',desc:'Atılma bekleme süresi %25 azalır.'},parry:{name:'REFLEKS',emoji:'🛡️',desc:'Savunma bekleme süresi %25 azalır.'},ghost:{name:'HAYALET BOMBA',emoji:'👻',desc:'Bomba iç engellerin içinden geçer; dış duvarlardan seker.'},charge:{name:'HIZLI ŞARJ',emoji:'🔋',desc:'Bombayı %20 daha hızlı doldur.'},runner:{name:'ÇEVİK ADIM',emoji:'👟',desc:'Normal hareket hızın %8 artar.'},cooling:{name:'SERİN KAN',emoji:'🧊',desc:'Dondurma etkisi %30 daha kısa sürer.'}};
@@ -111,7 +112,7 @@ function newGame(){particles=[];rings=[];shakes=0;keys=Object.create(null);touch
  const touchDevice=(navigator.maxTouchPoints>0||matchMedia('(pointer:coarse)').matches);if(touchDevice&&$('touchControls').parentElement!==$('gameScreen'))$('gameScreen').append($('touchControls'));$('touchControls').style.display=options.mode!=='local'&&touchDevice?'block':'none';if(options.mode!=='local'&&touchDevice){$('keyThrow').textContent='💣';$('keyDash').textContent='➚';$('keyParry').textContent='⛨';$('keyPower').textContent='✦';$('controlsHint').textContent='Sol joystick ile hareket • FIRLAT basılı tut/bırak • ATIL kaç • SAVUN karşıla • KART kullan';}
  if(SHOOTER_MODE)configureShooterUI();
  if(options.mode==='online'){net.focusPaused=false;net.guestHeardShots=0;startRound();game.phase='countdown';game.phaseTime=2.0;hideOverlay();updateHUD();return;}
- if(SHOOTER_MODE){startRound();showOverlay('ARENA ÇATIŞMASI','🔫','SAVAŞA HAZIR MISIN?','Sol tık ile ateş et. WASD hareket, Space atıl, E kalkan, R yeniden doldur. İlk 10 eleme kazanır!',[{label:'SAVAŞI BAŞLAT →',action:()=>{snd('ready');game.phase='countdown';game.phaseTime=1.8;hideOverlay()}}]);updateHUD();return;}
+ if(SHOOTER_MODE){startRound();showOverlay('ARENA ÇATIŞMASI','🔫','SAVAŞA HAZIR MISIN?','Sol tık ile ateş et. WASD hareket, Space atıl, E kalkan, R yeniden doldur. Her eleme bir tur kazandırır!',[{label:'SAVAŞI BAŞLAT →',action:()=>{snd('ready');game.phase='countdown';game.phaseTime=1.8;hideOverlay()}}]);updateHUD();return;}
  startRound();showOverlay('MAÇ BAŞLIYOR','🎯','YENİ KURALLAR, YENİ KAOS','Atış tuşuna basılı tut, nişan al ve bırak. Gelen bombayı savunmayla geri sektir!', [{label:'HAZIRIM, BAŞLAT →',action:()=>{snd('ready');game.phase='countdown';game.phaseTime=3.2;hideOverlay()}}]);updateHUD()}
 
 // Shooter rules are exclusive to the isolated staging branch.
@@ -127,10 +128,10 @@ function configureShooterUI(){
  $('keyParry').textContent=options.mode==='local'?'H':'E';
  $('keyPower').textContent=options.mode==='local'?'R':'R';
  $('modePill').textContent=options.mode==='online'?'🌐 '+net.code+' • SİLAHLI ARENA':options.mode==='bot'?'🤖 BOT ÇATIŞMASI':'👥 İKİ OYUNCU';
- $('roundLabel').textContent='SÜRESİZ ÇATIŞMA';
- $('fuseLabel').textContent='HEDEF';
+ $('roundLabel').textContent='TUR 1 / '+game.rules.rounds;
+ $('fuseLabel').textContent='RAUNT';
  $('timerIcon').textContent='🎯';
- $('timerDigits').textContent=String(SHOOTER_KILLS);
+ $('timerDigits').textContent=String(game.rules.rounds);
  $('bombStatus').textContent='🔫 SİLAH HAZIR';
  $('tipText').textContent='Nişan al, ateş et; R ile şarjör değiştir.';
  document.querySelectorAll('.ability').forEach((item,i)=>{
@@ -158,17 +159,30 @@ function configureShooterUI(){
 }
 function startShooterRound(){
  const g=game;
- g.shooter=true;g.round=1;g.map=MAPS[g.rules.arena==='random'?Math.floor(rand(0,MAPS.length)):g.rules.arena==='cycle'?Math.floor(rand(0,MAPS.length)):Number(g.rules.arena)];
+ g.shooter=true;
+ g.round=0;
+ g.score=[0,0];g.shotsFired=[0,0];
  g.rules.panic=false;g.rules.chaos=false;g.rules.cards=false;g.rules.upgrades=false;
- g.phase='countdown';g.phaseTime=1.8;g.fuse=999;g.initialFuse=999;g.holder=-1;
- g.score=[0,0];g.bullets=[];g.shotsFired=[0,0];
- g.card=null;g.chaos=null;g.snowPatches=[];g.snowDelay=1.3;g.elapsed=0;
+ g.fuse=999;g.initialFuse=999;g.holder=-1;
  g.bomb={mode:'hidden',owner:0,x:500,y:281,vx:0,vy:0,trail:[],life:0};
+ beginShooterRound();
+}
+function beginShooterRound(){
+ const g=game;
+ g.round++;
+ const arenaOption=g.rules.arena;
+ const index=arenaOption==='cycle'?(g.round-1)%MAPS.length:
+   arenaOption==='random'?Math.floor(rand(0,MAPS.length)):Number(arenaOption);
+ g.map=MAPS[index];g.phase='countdown';g.phaseTime=1.8;
+ g.bullets=[];g.roundWinner=null;
+ g.card=null;g.chaos=null;g.snowPatches=[];g.snowDelay=1.3;g.elapsed=0;
  for(let i=0;i<2;i++){
   const p=g.players[i];p.x=i?850:150;p.y=281;p.vx=0;p.vy=0;
-  p.hp=SHOOTER_HP;p.dead=false;p.respawn=0;p.invulnerable=0;
+  p.hp=SHOOTER_HP;p.dead=false;p.respawn=0;p.invulnerable=.35;
   p.shooting=false;p.ammo=SHOOTER_CLIP;p.reload=0;p.fireCD=0;p.muzzle=0;p.hitFlash=0;
-  p.shieldTime=0;p.parryCD=0;p.parryTime=0;p.dashCD=0;p.dashTime=0;p.stun=0;p.portalCD=0;p.upgrades=[];p.card=null;p.aim={x:i?-1:1,y:0};p.face={x:i?-1:1,y:0};
+  p.shieldTime=0;p.parryCD=0;p.parryTime=0;p.dashCD=0;p.dashTime=0;
+  p.stun=0;p.portalCD=0;p.upgrades=[];p.card=null;
+  p.aim={x:i?-1:1,y:0};p.face={x:i?-1:1,y:0};
  }
  $('mapName').textContent=g.map.name;hideOverlay();
 }
@@ -235,17 +249,15 @@ function shooterHit(p,owner,x,y){
  g.stats.hits[owner]++;burst(x,y,p.color,12,135);ring(x,y,'#ffffff',25,.15);
  snd('damage',p.id===0?.7:.3);
  if(p.hp>0)return;
- p.dead=true;p.respawn=1.75;p.shooting=false;p.vx=p.vy=0;
- g.score[owner]++;burst(p.x,p.y,p.color,34,230);ring(p.x,p.y,'#ffe08a',98,.4);
- snd('eliminate',.8);alertToast(g.players[owner].name+' ELEME YAPTI!',1);
- if(g.score[owner]>=SHOOTER_KILLS){
-  g.phase='finished';shooterMatchOver(owner);
- }
+ p.dead=true;p.respawn=0;p.shooting=false;p.vx=p.vy=0;
+ g.score[owner]++;g.roundWinner=owner;g.phase='roundwin';g.phaseTime=1.6;
+ burst(p.x,p.y,p.color,34,230);ring(p.x,p.y,'#ffe08a',98,.4);
+ snd('eliminate',.8);alertToast(g.players[owner].name+' TURU KAZANDI!',1.3);
 }
 function shooterMatchOver(winner){
  const g=game;
  if(options.mode==='online'&&net.role==='guest')return;
- showOverlay('SÜRESİZ ARENA • İLK 10 ELEME','🏆',
+ showOverlay('SÜRESİZ ARENA • '+g.rules.rounds+' TUR','🏆',
    g.players[winner].name+' KAZANDI!',
    'Skor '+g.score.join(' – ')+'. '+g.stats.throws[0]+' atış • '+g.stats.hits[0]+' isabet.',
    [{label:'↻ YENİ MAÇ',action:()=>{if(options.mode==='online'){
@@ -281,6 +293,15 @@ function tickShooter(dt){
  if(!game)return;
  const g=game;
  if(g.phase==='countdown'){g.phaseTime-=dt;if(g.phaseTime<=0){g.phase='active';snd('ready');alertToast('🔫 ÇATIŞMA BAŞLADI!',1);}return;}
+ if(g.phase==='roundwin'){
+  g.phaseTime-=dt;
+  if(g.phaseTime<=0){
+   if(g.round>=g.rules.rounds){g.phase='finished';
+     shooterMatchOver(g.score[0]>g.score[1]?0:1);
+   }else{beginShooterRound();}
+  }
+  return;
+ }
  if(g.phase!=='active')return;
  g.elapsed+=dt;
  const steps=Math.max(1,Math.ceil(dt/.008)),step=dt/steps;
@@ -319,10 +340,10 @@ function updateShooterHUD(){
   const hpFill=$('shooterHp'+i);if(hpFill){hpFill.style.width=(pp.hp/SHOOTER_HP*100)+'%';hpFill.style.background=pp.hp<35?'#ff526b':i===0?'#c9ff49':'#ff6bb9';}
   $('scoreBox'+i).style.boxShadow=pp.hitFlash>0?'inset 0 0 20px #ff728060':'none';
  }
- $('roundLabel').textContent='SÜRESİZ ARENA';
- $('fuseLabel').textContent='İLK '+SHOOTER_KILLS+' ELEME';
+ $('roundLabel').textContent='TUR '+g.round+' / '+g.rules.rounds;
+ $('fuseLabel').textContent='TUR SAYISI';
  $('timerIcon').textContent='🎯';
- $('timerDigits').textContent=String(SHOOTER_KILLS);
+ $('timerDigits').textContent=String(g.rules.rounds);
  $('bombStatus').textContent=p.dead?'☠️ YENİDEN DOĞUYORSUN':p.reload>0?'↻ ŞARJÖR YENİLENİYOR':'🔫 '+p.ammo+' / '+SHOOTER_CLIP+' MERMİ';
  $('bombStatus').style.color=p.dead?'#ff6c88':'#d8ff52';
  $('tipText').textContent='Sol tık: ateş • R: doldur • E: kalkan • Space: atıl';
@@ -762,11 +783,14 @@ function onNetMessage(d){
     net.guestHeardShots=next;
   }
   if(game.phase==='explode'&&game.explosionNoticeShown&&!oldExplosionNotice&&!net.hostAway)showExplosionOutcome();
+  if(SHOOTER_MODE&&game.phase==='roundwin'&&oldPhase!=='roundwin'){
+   flashCallout(game.players[game.roundWinner].name+' TURU KAZANDI!',1.3);snd('eliminate',.35);
+  }
   if(oldRound!==game.round){$('mapName').textContent=game.map.name;hideOverlay();}
   if(oldChaos!==game.chaos&&game.chaos&&CHAOS[game.chaos])flashCallout(CHAOS[game.chaos].name,2);
   if(game.phase!==oldPhase){if(SHOOTER_MODE&&game.phase==='finished'){
       const winner=game.score[0]>game.score[1]?0:1;
-      showOverlay('ARENA ÇATIŞMASI','🏆',game.players[winner].name+' KAZANDI!','İlk 10 elemeye ulaşan oyuncu kazandı. Skor '+game.score.join(' – ')+'.',[{label:'ANA MENÜ',action:returnMenu}]);snd('win',.7);
+      showOverlay('ARENA ÇATIŞMASI','🏆',game.players[winner].name+' KAZANDI!',game.rules.rounds+' turluk maç tamamlandı. Skor '+game.score.join(' – ')+'.',[{label:'ANA MENÜ',action:returnMenu}]);snd('win',.7);
     }else if(game.phase==='upgrade'){showUpgradeChoice();}else if(game.phase==='explode'){
      hideOverlay();snd('boom',.6);
    }else if(game.phase==='finished'){
