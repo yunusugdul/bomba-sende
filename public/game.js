@@ -269,6 +269,7 @@ function shooterFire(p){
  if(g.bullets.length>120)g.bullets.splice(0,g.bullets.length-120);
  burst(p.x+direction.x*35,p.y+direction.y*35,'#ffcf78',7,130);
  snd('shot',p.id===(options.mode==='online'?net.slot:0)? .70:.40,p.weapon);
+ if(p.id===(options.mode==='online'?net.slot:0))shakes=Math.max(shakes,weapon.recoil*14);
  if(p.ammo===0){shooterReload(p.id);p.shooting=true;}
 }
 function shooterHit(p,owner,x,y,damage=SHOOTER_DAMAGE){
@@ -299,7 +300,7 @@ function shooterHit(p,owner,x,y,damage=SHOOTER_DAMAGE){
 function shooterMatchOver(winner){
  const g=game;if(options.mode==='online'&&net.role==='guest')return;
  const teamMode=g.rules.battleMode==='team';
- const who=teamMode?(winner===0?'MAVİ TAKIM':'KIRMIZI TAKIM'):g.players[winner]?.name||'OYUNCU';
+ const who=teamMode?(winner===0?'YEŞİL TAKIM':'PEMBE TAKIM'):g.players[winner]?.name||'OYUNCU';
  showOverlay(g.rules.battleMode==='duel'?g.rules.rounds+' TURLUK DÜELLO':g.rules.battleMode==='ffa'?'HERKES TEK':'2V2 TAKIM SAVAŞI',
     '🏆',who+' KAZANDI!',
    'Skor '+g.score.join(' – ')+'. '+(g.stats.throws[0]||0)+' atış • '+(g.stats.hits[0]||0)+' isabet.',
@@ -439,7 +440,7 @@ function updateMultiplayerHud(){
   const row=box.children[i],p=game.players[i];
   row.classList.toggle('self',i===(net.slot||0));
   row.style.setProperty('--player-color',p.color);
-  row.children[0].textContent=(mode==='team'?(i%2?'🔴 ':'🔵 '):'')+p.name;
+  row.children[0].textContent=(mode==='team'?(i%2?'🩷 ':'🟩 '):'')+p.name;
   row.children[1].firstChild.style.width=(100*Math.max(0,p.hp||0)/SHOOTER_HP)+'%';
   row.children[1].firstChild.style.background=p.color;
   row.children[2].textContent=mode==='team'?'TAKIM '+game.score[i%2]:'✕ '+game.score[i];
@@ -470,7 +471,7 @@ function updateShooterHUD(){
 }
 function drawShooterArena(){
  if(arena3d){
-  try{arena3d.draw(game,globalTime,particles,rings,shakes);ctx.clearRect(0,0,W,H);return;}
+  try{arena3d.draw(game,globalTime,particles,rings,shakes,options.mode==='online'?(net.slot??0):0);ctx.clearRect(0,0,W,H);return;}
   catch(e){console.error('Shooter 3D rendering failed, switching to canvas.',e);
     arena3d.dispose();arena3d=null;}
  }
