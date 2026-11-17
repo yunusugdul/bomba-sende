@@ -5,11 +5,12 @@ const fs=require('node:fs');const path=require('node:path');
 const game=fs.readFileSync(path.join(__dirname,'../public/game.js'),'utf8');
 const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
 const server=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
-test('ice map uses transient small snow zones with exactly 30% movement penalty',()=>{
+test('ice map uses three large temporary snow zones with 50% movement penalty',()=>{
  assert.match(game,/function snowStep\(dt\)/);
  assert.match(game,/g\.snowPatches\.push\(/);
- assert.match(game,/if\(game\.map===MAPS\[1\]&&game\.snowPatches\.some/);
- assert.match(game,/speed\*=\.7/);
+ assert.match(game,/const inSnow=game\.map===MAPS\[1\]&&game\.snowPatches\.some/);
+ assert.match(game,/if\(inSnow\)speed\*=\.5/);
+ assert.match(game,/slice\(-3\)/);
  assert.doesNotMatch(game,/chaos==='shrink'|g\.chaos='shrink'/);
  assert.doesNotMatch(game,/ALAN DARALIYOR/);
 });
