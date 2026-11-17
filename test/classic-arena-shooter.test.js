@@ -21,7 +21,7 @@ test('five classic maps use original 2D block layout and simple rendering',()=>{
   assert.deepEqual(maps[i].blocks.map(x=>[x.x,x.y,x.w,x.h]),original[i]);
  }
  assert.match(three,/function buildClassicMap\(map\)/);
- assert.match(three,/if\(simple\)\{stageDetail=null;buildClassicMap\(map\);return;\}/);
+ assert.match(three,/if\(simple\)\{stageDetail=buildClassicMap\(map\);return;\}/);
  assert.match(three,/resetMap\(g\.map,!!g\.shooter\)/);
  assert.match(three,/new THREE\.CanvasTexture\(canvas\)/);
 });
