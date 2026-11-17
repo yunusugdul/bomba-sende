@@ -452,8 +452,11 @@ function tickShooter(dt){
 function updateMultiplayerHud(){
  if(!game)return;
  const box=$('multiScore');if(!box)return;
+ const target=$('multiTarget');
  const four=game.players.length===4,mode=game.rules.battleMode;
  box.classList.toggle('hidden',!four);
+ target.classList.toggle('hidden',!four);
+ if(four)target.textContent=(mode==='team'?'🟩 2V2 TAKIM':'🎯 4 OYUNCU • HERKES TEK')+' • İLK '+game.rules.rounds+' ELEME';
  document.body.classList.toggle('four-player-match',four);
  if(!four)return;
  if(box.children.length!==4){
