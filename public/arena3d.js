@@ -1,6 +1,7 @@
 // Bomba Sende 3D presentation only. All collision, timing and networking stay in game.js.
 // THREE is installed locally and served by the existing Node web server.
 import * as THREE from '/vendor/three.module.js';
+import {createArenaDetailKit} from '/arena3d-detail.js';
 
 const S = 25, WIDTH = 1000, HEIGHT = 562;
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -14,9 +15,10 @@ export function createArena3D(inputCanvas) {
   const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.48;
+  renderer.toneMappingExposure = 1.32;
   const lowPower = matchMedia('(pointer:coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowPower ? 1.25 : 1.8));
+  const pixelRatio=Math.min(window.devicePixelRatio||1,lowPower?1.15:1.55);
+  renderer.setPixelRatio(pixelRatio);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.domElement.className = 'arena-webgl';
@@ -40,8 +42,10 @@ export function createArena3D(inputCanvas) {
   key.shadow.bias = -.0003;
   key.shadow.normalBias = .018;
   scene.add(key);
-  const rim = new THREE.DirectionalLight('#9e81ff', 1.25);
+  const rim = new THREE.DirectionalLight('#9e81ff', 1.8);
   rim.position.set(18,15,-12); scene.add(rim);
+  const fill = new THREE.DirectionalLight('#73b8ff',.85);
+  fill.position.set(10,8,17);scene.add(fill);
 
   const stage = new THREE.Group(); scene.add(stage);
   const effects = new THREE.Group(); scene.add(effects);
@@ -87,6 +91,8 @@ export function createArena3D(inputCanvas) {
       if(o.isMesh) {const mm = Array.isArray(o.material)?o.material:[o.material]; for(const m of mm) if(m && ![arenaFloor,linesMat,wallBody,platformMaterial].includes(m)) m.dispose();}});
     group.clear();
   }
+  const detailKit=createArenaDetailKit(THREE,{stage,world,block,mesh,track,ring,geometries,lowPower});
+  let stageDetail=null;
   function resetMap(map) {
     disposeGroup(stage);
     accent=map.glow; lastMap=map.name;
@@ -141,22 +147,9 @@ export function createArena3D(inputCanvas) {
     }
     // Subtle arena landmark at the centre, stays below the playing surface.
     const center=ring(stage,map.glow,6.9);center.position.y=.03;center.material.opacity=.16;
+    stageDetail=detailKit.build(map);
   }
 
-  function makeLabel(name,hex) {
-    const c=document.createElement('canvas'); c.width=512;c.height=128;
-    const ctx=c.getContext('2d');
-    ctx.fillStyle='rgba(9,12,29,0.90)';
-    ctx.beginPath();ctx.roundRect(12,14,488,96,24);ctx.fill();
-    ctx.strokeStyle=hex;ctx.lineWidth=5;ctx.stroke();
-    ctx.fillStyle='#fff';ctx.font='900 43px Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    const label=String(name||'OYUNCU').slice(0,14);
-    ctx.fillText(label,256,64,440);
-    const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;
-    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false}));
-    sprite.scale.set(3.55,.88,1);sprite.position.y=3.1;
-    return sprite;
-  }
   function makeHuman(hex,name,id) {
     const root = new THREE.Group(); scene.add(root);
     const model=new THREE.Group();root.add(model);
@@ -192,8 +185,25 @@ export function createArena3D(inputCanvas) {
     const carry=ring(root,'#ffbd64',1.31);carry.position.y=.09;
     const defense=ring(root,'#72efff',1.55);defense.position.y=.17;
     const charge=ring(root,'#e3ff65',1.46);charge.position.y=.13;
-    const label=makeLabel(name,hex);root.add(label);
-    return {root,model,arms,legs,a,carry,defense,charge,label,prevX:null,prevZ:null};
+    // High detail combat suit without changing the old 21px physical collision radius.
+    const alloy=mat(id===0?'#293d3b':'#433048',{metalness:.68,roughness:.28});
+    const trim=mat(id===0?'#c7ec52':'#ff87cc',{metalness:.48,roughness:.3,
+      emissive:id===0?'#344011':'#462039',emissiveIntensity:.5});
+    block(model,0,1.47,.44,.78,.47,.17,alloy);
+    block(model,0,1.50,.54,.43,.09,.057,trim);
+    for(const side of [-1,1]) {
+      mesh(geometries.sphere,alloy,model,side*.58,1.75,0,[.30,.25,.31]);
+      block(model,side*.28,.92,.36,.14,.20,.08,trim);
+      block(model,side*.25,.50,.23,.32,.28,.48,alloy);
+      mesh(geometries.sphere,trim,model,side*.53,1.06,.12,[.14,.15,.20]);
+    }
+    mesh(geometries.sphere,alloy,model,0,2.48,-.02,[.39,.23,.39]);
+    const visor=mesh(geometries.sphere,mat('#78dbff',{metalness:.75,roughness:.12,
+      emissive:id===0?'#266777':'#74418a',emissiveIntensity:.58}),model,0,2.24,.26,[.29,.12,.15]);
+    visor.castShadow=false;
+    block(model,0,1.05,-.36,.62,.43,.21,alloy);
+    block(model,0,1.13,-.49,.34,.075,.08,trim);
+    return {root,model,arms,legs,a,carry,defense,charge,prevX:null,prevZ:null};
   }
   const humans=[makeHuman('#d8ff52','SEN',0),makeHuman('#ff81c4','RAKİP',1)];
   function updateHuman(o,p,g,t,dt) {
@@ -225,8 +235,7 @@ export function createArena3D(inputCanvas) {
     o.a.material.opacity=p.dashTime>0?.95:.30;
     o.a.scale.setScalar(p.dashTime>0?1.4:1);
     o.model.children[0].material.emissive?.set(p.stun>0?'#285775':'#000000');
-    const name=String(p.name||'OYUNCU').slice(0,14);
-    if(o.name!==name){o.root.remove(o.label);o.label.material.map.dispose();o.label.material.dispose();o.label=makeLabel(name,p.color);o.root.add(o.label);o.name=name;}
+    // Character names remain exclusively in the existing scoreboard.
   }
   let bomb= new THREE.Group();scene.add(bomb);
   mesh(geometries.sphereFine,mat('#171b2b',{metalness:.76,roughness:.23}),bomb,0,0,0,[.57,.57,.57]);
@@ -282,6 +291,7 @@ export function createArena3D(inputCanvas) {
     resize();
     // Guest snapshots contain a fresh JSON map object every 33 ms: compare the map name.
     if(g.map.name!==lastMap)resetMap(g.map);
+    stageDetail?.update(t);
     const now=performance.now(),dt=Math.min(.07,(now-lastFrame)/1000);lastFrame=now;
     // Camera shake only changes presentation, never the targeting plane or simulation.
     const cameraJitter=shake>0?.055*Math.min(6,shake):0;
@@ -325,7 +335,7 @@ export function createArena3D(inputCanvas) {
     renderer.render(scene,camera);
   }
   function dispose(){
-    renderer.dispose();renderer.domElement.remove();
+    composer?.dispose();detailKit.dispose();renderer.dispose();renderer.domElement.remove();
     disposeGroup(stage);scene.clear();
   }
   return {draw,pointer,dispose};
