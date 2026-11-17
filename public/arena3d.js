@@ -74,7 +74,8 @@ export function createArena3D(inputCanvas) {
     return mesh(geometries.box,material,parent,x,y,z,[w,h,d]);
   }
   function track(parent,x,z,w,d,hex,height=.055,opacity=1) {
-    return block(parent,x,height,z,w,.055,d,basic(hex,{toneMapped:false,transparent:opacity<1,opacity,depthWrite:opacity===1}));
+    const segment=block(parent,x,height,z,w,.055,d,basic(hex,{toneMapped:false,transparent:opacity<1,opacity,depthWrite:opacity===1}));
+    segment.castShadow=false;segment.receiveShadow=false;return segment;
   }
   function ring(parent,hex,radius=1) {
     const m=mesh(geometries.torus,basic(hex,{transparent:true,opacity:.85,depthWrite:false,toneMapped:false}),parent);
@@ -88,7 +89,7 @@ export function createArena3D(inputCanvas) {
   }
   function resetMap(map) {
     disposeGroup(stage);
-    accent=map.glow; lastMap=map;
+    accent=map.glow; lastMap=map.name;
     scene.background.set(map.floor).lerp(color('#050714'),.42);
     scene.fog.color.copy(scene.background);
     arenaFloor.color.set(map.floor);
@@ -279,7 +280,8 @@ export function createArena3D(inputCanvas) {
   }
   function draw(g,t,particles,rings,shake=0) {
     resize();
-    if(g.map!==lastMap)resetMap(g.map);
+    // Guest snapshots contain a fresh JSON map object every 33 ms: compare the map name.
+    if(g.map.name!==lastMap)resetMap(g.map);
     const now=performance.now(),dt=Math.min(.07,(now-lastFrame)/1000);lastFrame=now;
     // Camera shake only changes presentation, never the targeting plane or simulation.
     const cameraJitter=shake>0?.055*Math.min(6,shake):0;
