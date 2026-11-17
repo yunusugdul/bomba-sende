@@ -115,6 +115,36 @@ function snd(type,volume=1,weapon='pistol'){if(muted)return;try{audio??=new(wind
     source.start();source.stop(audio.currentTime+.11);return;
   }
   const notes={ready:[[490,.06,'sine',.045]],throw:[[240,.11,'sawtooth',.07],[450,.1,'sine',.04]],hit:[[700,.08,'triangle',.12],[420,.16,'sawtooth',.05]],parry:[[880,.08,'square',.045],[1150,.1,'triangle',.035]],dash:[[110,.1,'sawtooth',.045]],card:[[640,.1,'sine',.08],[940,.18,'sine',.05]],beep:[[740,.07,'square',.018]],boom:[[125,.3,'sawtooth',.16],[63,.5,'triangle',.12]],win:[[490,.12,'sine',.07],[660,.18,'sine',.07],[880,.3,'sine',.08]],shot:[[210,.085,'sawtooth',.11],[92,.11,'triangle',.12]],reload:[[520,.06,'square',.023],[760,.13,'sine',.05]],damage:[[115,.11,'sawtooth',.075]],eliminate:[[92,.25,'triangle',.14],[165,.17,'sawtooth',.11]],click:[[520,.04,'sine',.025]]}[type]||[];for(const [f,len,wave,vol] of notes){const osc=audio.createOscillator(),gain=audio.createGain(),now=audio.currentTime;osc.type=wave;osc.frequency.setValueAtTime(f,now);osc.frequency.exponentialRampToValueAtTime(Math.max(45,f*.65),now+len);gain.gain.setValueAtTime(vol*volume,now);gain.gain.exponentialRampToValueAtTime(.0001,now+len);osc.connect(gain).connect(audio.destination);osc.start(now);osc.stop(now+len+.005)}}catch(e){/* audio is optional */}}
+let arenaAmbience=null;
+function stopArenaAmbience(){
+ if(!arenaAmbience)return;
+ try{
+  arenaAmbience.gain.gain.setTargetAtTime(0,audio.currentTime,.06);
+  arenaAmbience.osc.stop(audio.currentTime+.32);
+ }catch{}
+ arenaAmbience=null;
+}
+function updateArenaAmbience(map){
+ if(!SHOOTER_MODE||!map||muted||!audio){stopArenaAmbience();return;}
+ if(arenaAmbience?.map===map.name)return;
+ stopArenaAmbience();
+ const tones={
+  'NEON PARK':[84,'sine'],
+  'BUZ LABİRENTİ':[60,'triangle'],
+  'PORTAL PARTİSİ':[126,'sine'],
+  'SEK SEK':[71,'triangle'],
+  'SON ŞANS':[53,'sine']
+ };
+ try{
+  const [frequency,wave]=tones[map.name]||tones['NEON PARK'];
+  const osc=audio.createOscillator(),gain=audio.createGain();
+  osc.type=wave;osc.frequency.setValueAtTime(frequency,audio.currentTime);
+  gain.gain.setValueAtTime(0,audio.currentTime);
+  gain.gain.setTargetAtTime(.006,audio.currentTime,.28);
+  osc.connect(gain).connect(audio.destination);osc.start();
+  arenaAmbience={map:map.name,osc,gain};
+ }catch{/* the match remains fully playable without ambience */}
+}
 function alertToast(s,seconds=1.4){const el=$('toast');el.textContent=s;el.classList.add('show');toastTimer=seconds}
 function flashCallout(s,seconds=2){const el=$('eventCallout');el.textContent=s;el.classList.remove('hidden');calloutTimer=seconds}
 function burst(x,y,color,count=14,speed=160){for(let i=0;i<count;i++){const ang=rand(0,TAU),v=rand(speed*.25,speed);particles.push({x,y,vx:Math.cos(ang)*v,vy:Math.sin(ang)*v,size:rand(2,6),t:rand(.3,.85),max:.85,col:color})}if(particles.length>500)particles.splice(0,particles.length-500)}
@@ -372,6 +402,7 @@ function tickShooter(dt){
  if(calloutTimer>0){calloutTimer-=dt;if(calloutTimer<=0)$('eventCallout').classList.add('hidden');}
  if(!game)return;
  const g=game;
+ updateArenaAmbience(g.map);
  if(g.eliminationFx){g.eliminationFx.t-=dt;if(g.eliminationFx.t<=0)g.eliminationFx=null;}
  if(g.hitFx){g.hitFx.t-=dt;if(g.hitFx.t<=0)g.hitFx=null;}
  if(g.phase==='countdown'){g.phaseTime-=dt;if(g.phaseTime<=0){g.phase='active';snd('ready');alertToast('🔫 ÇATIŞMA BAŞLADI!',1);}return;}
@@ -512,7 +543,7 @@ function startRound(){if(SHOOTER_MODE){startShooterRound();return;}const g=game,
  g.players.forEach((p,i)=>{p.x=i?850:150;p.y=281;p.vx=p.vy=p.speed=0;p.face={x:i?-1:1,y:0};p.aim={x:i?-1:1,y:0};p.charging=false;p.charge=0;p.dashCD=0;p.dashTime=0;p.parryCD=0;p.parryTime=0;p.shieldTime=0;p.shieldUsed=false;p.stun=0;p.portalCD=0;p.card=null;p.aiThink=0;p.aiDecision=null});$('mapName').textContent=g.map.name;hideOverlay()}
 function showOverlay(eyebrow,icon,title,description,actions=[]){$('overlayEyebrow').textContent=eyebrow;$('overlayIcon').textContent=icon;$('overlayTitle').textContent=title;$('overlayDesc').textContent=description;const div=$('overlayFoot');div.replaceChildren();for(const a of actions){const b=document.createElement('button');b.textContent=a.label;if(a.secondary)b.classList.add('secondary-btn');b.addEventListener('click',()=>{snd('click');a.action()});div.appendChild(b)}$('overlay').classList.remove('hidden')}
 function hideOverlay(){$('overlay').classList.add('hidden')}
-function returnMenu(){resetChatVisibility();if(options.mode==='online')leaveOnline();closeGameChat();$('gameChatPanel').classList.add('hidden');game=null;keys=Object.create(null);document.body.classList.remove('is-playing');$('gameScreen').classList.add('hidden');$('landing').classList.remove('hidden');hideOverlay();$('eventCallout').classList.add('hidden');} 
+function returnMenu(){stopArenaAmbience();resetChatVisibility();if(options.mode==='online')leaveOnline();closeGameChat();$('gameChatPanel').classList.add('hidden');game=null;keys=Object.create(null);document.body.classList.remove('is-playing');$('gameScreen').classList.add('hidden');$('landing').classList.remove('hidden');hideOverlay();$('eventCallout').classList.add('hidden');} 
 function pauseGame(){if(options.mode==='online')return;if(!game)return;if(game.phase==='paused'){game.phase=game.pausedFrom;hideOverlay();return}if(!['active','countdown'].includes(game.phase))return;game.pausedFrom=game.phase;game.phase='paused';showOverlay('MOLA ZAMANI','⏸️','OYUN DURAKLATILDI','Hazır olduğunda kaldığın yerden devam et.',[{label:'DEVAM ET →',action:pauseGame},{label:'ANA MENÜ',secondary:true,action:returnMenu}])}
 function showHelp(){$('infoDialog').classList.remove('hidden');$('infoDialog').setAttribute('aria-hidden','false');$('infoClose').focus();}
 function closeHelp(){$('infoDialog').classList.add('hidden');$('infoDialog').setAttribute('aria-hidden','true');$('helpBtn').focus();}
@@ -992,7 +1023,7 @@ function init(){
  $('helpBtn').addEventListener('click',showHelp);$('infoClose').addEventListener('click',closeHelp);$('infoDone').addEventListener('click',closeHelp);$('infoDialog').addEventListener('click',e=>{if(e.target===$('infoDialog'))closeHelp()});
  $('pauseBtn').addEventListener('click',pauseGame);
  $('fullscreenBtn').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{alertToast('Tam ekran tarayıcın tarafından engellendi.')}layoutArena();});
- $('muteTop').addEventListener('click',()=>{muted=!muted;$('muteTop').textContent=muted?'🔇':'🔊'});
+ $('muteTop').addEventListener('click',()=>{muted=!muted;stopArenaAmbience();$('muteTop').textContent=muted?'🔇':'🔊'});
  window.addEventListener('resize',layoutArena);document.addEventListener('fullscreenchange',()=>{showChatTemporarily();setTimeout(layoutArena,80);});bindTouch();
  const invite=new URLSearchParams(location.search).get('room');
  if(invite){
