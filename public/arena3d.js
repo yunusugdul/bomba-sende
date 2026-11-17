@@ -682,7 +682,10 @@ export function createArena3D(inputCanvas) {
     stageDetail?.update(t);
     const now=performance.now(),dt=Math.min(.07,(now-lastFrame)/1000);lastFrame=now;
     // Camera shake only changes presentation, never the targeting plane or simulation.
-    const cameraJitter=shake>0?.055*Math.min(6,shake):0;
+    const cameraSlot=g.shooter?Math.max(0,Math.min(g.players.length-1,arguments.length>5?arguments[5]:0)):0;
+    const self=g.players[cameraSlot];
+    const localRecoil=g.shooter?(self?.recoil||0)+(self?.hitFlash||0)*.35:0;
+    const cameraJitter=(shake>0?.055*Math.min(6,shake):0)+localRecoil*.12;
     camera.position.set(Math.sin(t*41)*cameraJitter,CAMERA_HEIGHT,CAMERA_DEPTH+Math.cos(t*35)*cameraJitter);
     camera.lookAt(0,0,0);
     for(let i=0;i<humans.length;i++){
