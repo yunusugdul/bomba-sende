@@ -675,14 +675,14 @@ export function createArena3D(inputCanvas) {
       return {x:clamp(hit.x*S+WIDTH/2,0,WIDTH),y:clamp(hit.z*S+HEIGHT/2,0,HEIGHT)};
     return null;
   }
-  function draw(g,t,particles,rings,shake=0) {
+  function draw(g,t,particles,rings,shake=0,viewSlot=0) {
     resize();
     // Guest snapshots contain a fresh JSON map object every 33 ms: compare the map name.
     if(g.map.name!==lastMap)resetMap(g.map,!!g.shooter);
     stageDetail?.update(t);
     const now=performance.now(),dt=Math.min(.07,(now-lastFrame)/1000);lastFrame=now;
     // Camera shake only changes presentation, never the targeting plane or simulation.
-    const cameraSlot=g.shooter?Math.max(0,Math.min(g.players.length-1,arguments.length>5?arguments[5]:0)):0;
+    const cameraSlot=g.shooter?Math.max(0,Math.min(g.players.length-1,viewSlot)):0;
     const self=g.players[cameraSlot];
     const localRecoil=g.shooter?(self?.recoil||0)+(self?.hitFlash||0)*.35:0;
     const cameraJitter=(shake>0?.055*Math.min(6,shake):0)+localRecoil*.12;
