@@ -72,7 +72,7 @@ test('line-of-sight prevents a bot from firing through a wall',()=>{
 test('bullets stop on walls, never hit the owner, and deal health damage',()=>{
  const src=extract('function shooterAdvanceBullets(dt){','\nfunction tickShooter(dt){');
  const players=[{id:0,x:120,y:280,r:21,dead:false,hp:100},{id:1,x:340,y:280,r:21,dead:false,hp:100}];
- const game={map:maps[0],players,bullets:[]};
+ const game={map:maps[0],players,bullets:[],rules:{battleMode:'duel'}};
  let hits=0,impacts=0;
  const simulate=Function('game','blocked','burst','shooterHit','SHOOTER_DAMAGE',src+'\nreturn shooterAdvanceBullets;')(
    game,(x,y,r)=>x>280,()=>{impacts++},(p,owner)=>{hits++;p.hp-=20;},20);
@@ -88,18 +88,18 @@ test('bullets stop on walls, never hit the owner, and deal health damage',()=>{
 test('shooting consumes ammo, adds one network-visible projectile and records score stats',()=>{
  const src=extract('function shooterFire(p){','\nfunction shooterHit(');
  const g={phase:'active',shotsFired:[0,0],bullets:[],stats:{throws:[0,0]}};
- const p={id:0,x:150,y:281,dead:false,fireCD:0,reload:0,ammo:16,aim:{x:1,y:0}};
- const fire=Function('game','aimOf','burst','snd','shooterReload','SHOOTER_CLIP','SHOOTER_DAMAGE',src+'\nreturn shooterFire;')(
-  g,()=>({x:1,y:0}),()=>{},()=>{},()=>{},16,20);
+ const p={id:0,x:150,y:281,dead:false,fireCD:0,reload:0,ammo:16,aim:{x:1,y:0},weapon:'pistol'};
+ const fire=Function('game','aimOf','burst','snd','shooterReload','SHOOTER_CLIP','SHOOTER_DAMAGE','playerWeapon','options','net',src+'\nreturn shooterFire;')(
+  g,()=>({x:1,y:0}),()=>{},()=>{},()=>{},16,20,()=>({rate:.17,clip:16,range:.96,speed:950,damage:20,pellets:1,spread:0,color:'#fff0a6',recoil:.12}),{mode:'bot'},{slot:0});
  fire(p);
  assert.equal(g.bullets.length,1);assert.equal(g.bullets[0].owner,0);
  assert.equal(g.bullets[0].vx,950);
  assert.equal(p.ammo,15);assert.equal(g.stats.throws[0],1);assert.equal(g.shotsFired[0],1);
 });
 test('a blocked hit causes no damage; fifth clear hit defeats player and scores',()=>{
- const src=extract('function shooterHit(p,owner,x,y){','\nfunction shooterMatchOver(');
+ const src=extract('function shooterHit(p,owner,x,y,damage=SHOOTER_DAMAGE){','\nfunction shooterMatchOver(');
  const victim={id:1,x:850,y:281,dead:false,hp:100,shieldTime:1,parryTime:0,invulnerable:0};
- const g={phase:'active',players:[{id:0,name:'HOST'},victim],score:[0,0],stats:{hits:[0,0]}};
+ const g={phase:'active',players:[{id:0,name:'HOST'},victim],score:[0,0],stats:{hits:[0,0]},rules:{battleMode:'duel',rounds:3}};
  const hit=Function('game','SHOOTER_DAMAGE','SHOOTER_KILLS','ring','snd','burst','alertToast','shooterMatchOver',src+'\nreturn shooterHit;')(
   g,20,10,()=>{},()=>{},()=>{},()=>{},()=>{throw Error('unexpected victory')});
  hit(victim,0,850,281);assert.equal(victim.hp,100,'shield must block shots');
