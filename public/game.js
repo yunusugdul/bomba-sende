@@ -90,13 +90,13 @@ function resetChatVisibility(){
 let mouse={x:760,y:280,active:false};
 let touch={dx:0,dy:0,joystickId:null,throwDown:false};
 let particles=[],rings=[],shakes=0,globalTime=0,toastTimer=0,calloutTimer=0;
-function snd(type,volume=1){if(muted)return;try{audio??=new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();
+function snd(type,volume=1,weapon='pistol'){if(muted)return;try{audio??=new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();
   if(!gunshotDecoding){gunshotDecoding=true;gunshotFile.then(bytes=>bytes?audio.decodeAudioData(bytes.slice(0)):null)
     .then(buffer=>{gunshotBuffer=buffer;}).catch(()=>{});}
   if(type==='shot'){
     if(gunshotBuffer){
       const source=audio.createBufferSource(),gain=audio.createGain();source.buffer=gunshotBuffer;
-      source.playbackRate.value=.95+Math.random()*.1;
+      source.playbackRate.value=weapon==='rifle'?1.18:weapon==='shotgun'?.80:weapon==='sniper'?.68:.95+Math.random()*.1;
       gain.gain.setValueAtTime(.52*volume,audio.currentTime);
       source.connect(gain).connect(audio.destination);source.start();return;
     }
@@ -181,6 +181,7 @@ function configureShooterUI(){
 }
 function startShooterRound(){
  const g=game;
+ if(options.mode!=='online')g.rules.battleMode='duel';
  g.shooter=true;
  g.round=0;
  g.score=Array(g.rules.battleMode==='ffa'?4:2).fill(0);g.teamScores=[0,0];
@@ -416,27 +417,56 @@ function tickShooter(dt){
   if(g.phase!=='active')break;
  }
 }
+function updateMultiplayerHud(){
+ if(!game)return;
+ const box=$('multiScore');if(!box)return;
+ const four=game.players.length===4,mode=game.rules.battleMode;
+ box.classList.toggle('hidden',!four);
+ document.body.classList.toggle('four-player-match',four);
+ if(!four)return;
+ if(box.children.length!==4){
+  box.replaceChildren();
+  for(let i=0;i<4;i++){
+   const row=document.createElement('div');row.className='multi-score-player';
+   const name=document.createElement('strong');name.className='multi-player-name';
+   const hp=document.createElement('div');hp.className='multi-player-hp';
+   const fill=document.createElement('span');hp.append(fill);
+   const kills=document.createElement('b');kills.className='multi-player-kills';
+   row.append(name,hp,kills);box.append(row);
+  }
+ }
+ for(let i=0;i<4;i++){
+  const row=box.children[i],p=game.players[i];
+  row.classList.toggle('self',i===(net.slot||0));
+  row.style.setProperty('--player-color',p.color);
+  row.children[0].textContent=(mode==='team'?(i%2?'🔴 ':'🔵 '):'')+p.name;
+  row.children[1].firstChild.style.width=(100*Math.max(0,p.hp||0)/SHOOTER_HP)+'%';
+  row.children[1].firstChild.style.background=p.color;
+  row.children[2].textContent=mode==='team'?'TAKIM '+game.score[i%2]:'✕ '+game.score[i];
+ }
+}
 function updateShooterHUD(){
  if(!game)return;
- const g=game,self=options.mode==='online'&&net.slot===1?1:0,p=g.players[self];
+ const g=game,self=options.mode==='online'?net.slot??0:0,p=g.players[self]||g.players[0];
+ updateMultiplayerHud();
  for(let i=0;i<2;i++){
   const pp=g.players[i];$('score'+i).textContent=g.score[i];
   $('player'+i+'Status').textContent=pp.dead?'TUR BİTTİ':Math.ceil(pp.hp)+' / '+SHOOTER_HP+' CAN';
   const hpFill=$('shooterHp'+i);if(hpFill){hpFill.style.width=(pp.hp/SHOOTER_HP*100)+'%';hpFill.style.background=pp.hp<35?'#ff526b':i===0?'#c9ff49':'#ff6bb9';}
   $('scoreBox'+i).style.boxShadow=pp.hitFlash>0?'inset 0 0 20px #ff728060':'none';
  }
- $('roundLabel').textContent='TUR '+g.round+' / '+g.rules.rounds;
- $('fuseLabel').textContent='TUR SAYISI';
+ $('roundLabel').textContent=g.rules.battleMode==='duel'?'TUR '+g.round+' / '+g.rules.rounds:g.rules.battleMode==='team'?'2V2 • TAKIM SAVAŞI':'HERKES TEK • 4 OYUNCU';
+ $('fuseLabel').textContent=g.rules.battleMode==='duel'?'TUR SAYISI':'ELEME HEDEFİ';
  $('timerIcon').textContent='🎯';
  $('timerDigits').textContent=String(g.rules.rounds);
- $('bombStatus').textContent=p.dead?'☠️ YENİDEN DOĞUYORSUN':p.reload>0?'↻ ŞARJÖR YENİLENİYOR':'🔫 '+p.ammo+' / '+SHOOTER_CLIP+' MERMİ';
+ $('bombStatus').textContent=p.dead?(g.rules.battleMode==='duel'?'☠️ TUR BİTTİ':'☠️ YENİDEN DOĞUYORSUN'):p.reload>0?'↻ ŞARJÖR YENİLENİYOR':'🔫 '+playerWeapon(p).name+' • '+p.ammo+' / '+playerWeapon(p).clip;
  $('bombStatus').style.color=p.dead?'#ff6c88':'#d8ff52';
  $('tipText').textContent='Sol tık: ateş • R: doldur • E: kalkan • Space: atıl';
- $('throwMeter').style.width=(p.ammo/SHOOTER_CLIP*100)+'%';
+ $('throwMeter').style.width=(p.ammo/playerWeapon(p).clip*100)+'%';
  $('dashMeter').style.width=clamp((1-p.dashCD/3.15)*100,0,100)+'%';
  $('parryMeter').style.width=clamp((1-p.parryCD/3.5)*100,0,100)+'%';
  $('cardName').textContent=p.reload>0?'DOLDURULUYOR':'ŞARJÖR DOLDUR';
- $('cardMeter').style.width=(p.reload>0?clamp((1-p.reload/1.1)*100,0,100):100)+'%';
+ $('cardMeter').style.width=(p.reload>0?clamp((1-p.reload/playerWeapon(p).reload)*100,0,100):100)+'%';
 }
 function drawShooterArena(){
  if(arena3d){
