@@ -98,7 +98,7 @@ function onMessage(ws,raw){
   if(d.type==='input'&&ws.slot>0&&room.started){
     const num=n=>Number.isFinite(n)?Math.max(-1,Math.min(1,n)):0;
     const aim=n=>Number.isFinite(n)?Math.max(-1000,Math.min(1000,n)):0;
-    send(room.members[0].ws,{type:'input',slot:ws.slot,x:num(d.x),y:num(d.y),aimX:aim(d.aimX),aimY:aim(d.aimY),aimActive:!!d.aimActive});return;
+    send(room.members[0].ws,{type:'input',slot:ws.slot,x:num(d.x),y:num(d.y),aimX:aim(d.aimX),aimY:aim(d.aimY),aimActive:!!d.aimActive,weapon:['pistol','rifle','shotgun','sniper'].includes(d.weapon)?d.weapon:'pistol'});return;
   }
   if(d.type==='upgrade'&&ws.slot>0&&room.started){if(typeof d.choice==='string'&&['rocket','magnet','bank','dash','parry'].includes(d.choice))send(room.members[0].ws,{type:'upgrade',choice:d.choice});return;}
   if(d.type==='act'&&ws.slot>0&&room.started){
