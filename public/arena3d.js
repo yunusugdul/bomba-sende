@@ -222,9 +222,9 @@ export function createArena3D(inputCanvas) {
   function makeHuman(hex,name,id) {
     const root = new THREE.Group(); scene.add(root);
     const model=new THREE.Group();root.add(model);
-    const suit=mat(id===0?'#c9ff1f':'#ff43ac',{metalness:.04,roughness:.53,emissive:id===0?'#94c800':'#e91e77',emissiveIntensity:.76});
-    const suitDark=mat(id===0?'#45a947':'#e24d97',{metalness:.04,roughness:.6,emissive:id===0?'#2b8423':'#ae2a70',emissiveIntensity:.32});
-    const skin=mat(id===0?'#f1bd98':'#edb08b',{roughness:.82,metalness:0});
+    const suit=mat(['#c9ff1f','#ff43ac','#52dfff','#ffbe46'][id]||'#c9ff1f',{metalness:.04,roughness:.53,emissive:['#94c800','#e91e77','#0c93b3','#bd6411'][id]||'#94c800',emissiveIntensity:.76});
+    const suitDark=mat(['#45a947','#e24d97','#318da5','#c18032'][id]||'#45a947',{metalness:.04,roughness:.6,emissive:['#2b8423','#ae2a70','#15547d','#955117'][id]||'#2b8423',emissiveIntensity:.32});
+    const skin=mat(['#f1bd98','#edb08b','#f5bd92','#bf8c68'][id]||'#f1bd98',{roughness:.82,metalness:0});
     const hair=mat(id===0?'#242136':'#30253a',{roughness:.87,metalness:0});
     const bright=basic(hex,{toneMapped:false});
     // Humanoid: head, torso, both arms and legs - all narrower than the original collision diameter.
@@ -258,8 +258,8 @@ export function createArena3D(inputCanvas) {
     const charge=ring(root,'#e3ff65',1.46);charge.position.y=.13;
     // High detail combat suit without changing the old 21px physical collision radius.
     const alloy=mat(id===0?'#293d3b':'#433048',{metalness:.68,roughness:.28});
-    const trim=mat(id===0?'#daff46':'#ff6dbb',{metalness:.25,roughness:.36,
-      emissive:id===0?'#aaff3d':'#ff48a9',emissiveIntensity:1.55});
+    const trim=mat(['#daff46','#ff6dbb','#7df9ff','#ffd471'][id]||'#daff46',{metalness:.25,roughness:.36,
+      emissive:['#aaff3d','#ff48a9','#49dcff','#ffc64e'][id]||'#aaff3d',emissiveIntensity:1.55});
     block(model,0,1.47,.44,.78,.47,.17,alloy);
     block(model,0,1.50,.54,.43,.09,.057,trim);
     for(const side of [-1,1]) {
@@ -298,11 +298,12 @@ export function createArena3D(inputCanvas) {
     const hpRoot=new THREE.Group();scene.add(hpRoot);
     const hpBack=block(hpRoot,0,0,-.02,2.42,.33,.10,basic('#0c1328',{toneMapped:false}));
     hpBack.castShadow=false;
-    const hpFill=block(hpRoot,0,0,.07,2.21,.20,.09,basic(id===0?'#d8ff52':'#ff6baf',{toneMapped:false}));
+    const hpFill=block(hpRoot,0,0,.07,2.21,.20,.09,basic(hex,{toneMapped:false}));
     hpFill.castShadow=false;
     return {root,model,arms,legs,a,carry,defense,charge,gun,muzzle,hpRoot,hpFill,prevX:null,prevZ:null};
   }
-  const humans=[makeHuman('#baff22','SEN',0),makeHuman('#ff3fa9','RAKİP',1)];
+  const humans=[makeHuman('#baff22','SEN',0),makeHuman('#ff3fa9','RAKİP',1),
+    makeHuman('#73e9ff','OYUNCU 3',2),makeHuman('#ffc969','OYUNCU 4',3)];
   function updateHuman(o,p,g,t,dt) {
     const target=world(p.x,p.y);
     if (o.prevX===null || Math.hypot(target.x-o.root.position.x,target.z-o.root.position.z)>5) o.root.position.copy(target);
@@ -318,10 +319,17 @@ export function createArena3D(inputCanvas) {
       const pct=clamp((p.hp??100)/100,0,1);
       o.hpFill.scale.x=2.21*pct;
       o.hpFill.position.x=-1.105*(1-pct);
-      o.hpFill.material.color.set(pct<.35?'#ff526b':p.id===0?'#d8ff52':'#ff6baf');
+      o.hpFill.material.color.set(pct<.35?'#ff526b':p.color);
     }
     o.gun.visible=!!g.shooter;
-    if(g.shooter){o.gun.position.z=.47-(p.muzzle>0?.15:0);o.muzzle.visible=p.muzzle>0;}
+    if(g.shooter){
+      const weapon=p.weapon||'pistol';
+      o.gun.scale.set(weapon==='shotgun'?1.18:weapon==='sniper'?.82:weapon==='rifle'?.90:1,
+                      weapon==='shotgun'?1.14:1,
+                      weapon==='pistol'?.75:weapon==='rifle'?1.27:weapon==='sniper'?1.56:1.20);
+      o.gun.position.z=.47-(p.recoil||0)*.9;
+      o.muzzle.visible=p.muzzle>0;
+    }
 
     const moving=Math.hypot(p.vx||0,p.vy||0)>24;
     const run=moving?Math.min(1,Math.hypot(p.vx,p.vy)/260):0;
@@ -345,7 +353,10 @@ export function createArena3D(inputCanvas) {
     if(o.charge.visible){o.charge.material.opacity=.25+clamp(p.charge/.85,0,1)*.7;o.charge.rotation.z=t*2;}
     o.a.material.opacity=p.dashTime>0?.95:.30;
     o.a.scale.setScalar(p.dashTime>0?1.4:1);
-    o.model.children[0].material.emissive?.set(g.shooter&&p.hitFlash>0?'#ff5e4b':p.stun>0?'#285775':p.id===0?'#a0d512':'#ee3189');
+    o.model.children[0].material.emissive?.set(g.shooter&&p.hitFlash>0?'#ff3a42':p.stun>0?'#285775':
+      ['#94c800','#e91e77','#0c93b3','#bd6411'][p.id]||'#a0d512');
+    if(g.shooter&&g.victoryId===p.id){o.model.rotation.y=t*3;o.model.position.y=.38+Math.abs(Math.sin(t*9))*.28;
+      o.arms[0].rotation.z=-1.2;o.arms[1].rotation.z=1.2;}
     // Character names remain exclusively in the existing scoreboard.
   }
   // Recognizable hand-fused bomb: layered forged metal, warning badge, cap and live wick.
@@ -515,6 +526,48 @@ export function createArena3D(inputCanvas) {
     projectile.castShadow=false;projectile.visible=false;return projectile;
   });
   const shotAxis=new THREE.Vector3(0,1,0),shotDir=new THREE.Vector3();
+  // Pooled power-up presentation: clear silhouettes/hovering markers, no gameplay colliders.
+  const buffRoot=new THREE.Group();scene.add(buffRoot);buffRoot.visible=false;
+  const buffStyles={heal:{color:'#8eff9a',title:'CAN'},speed:{color:'#ffe680',title:'HIZ'},
+    shield:{color:'#85e6ff',title:'KALKAN'},boost:{color:'#ffb073',title:'HASAR'}};
+  const buffs={};
+  for(const [kind,style] of Object.entries(buffStyles)){
+    const group=new THREE.Group();buffRoot.add(group);group.visible=false;
+    const pad=mesh(geometries.cylinder,mat('#242a44',{metalness:.4,roughness:.62}),
+      group,0,.12,0,[.77,.13,.77]);pad.castShadow=false;
+    const halo=ring(group,style.color,.72);halo.position.y=.23;
+    const orb=new THREE.Group();group.add(orb);
+    const material=basic(style.color,{toneMapped:false});
+    if(kind==='heal'){
+      block(orb,0,1.1,0,.27,1.05,.33,material);
+      block(orb,0,1.1,0,1.05,.27,.33,material);
+    }else if(kind==='speed'){
+      const bolt=mesh(geometries.crystal,material,orb,0,1.12,0,[.34,.74,.39]);
+      bolt.rotation.z=-.30;
+      block(orb,.19,.80,.06,.24,.60,.23,material).rotation.z=.46;
+    }else if(kind==='shield'){
+      mesh(geometries.crystal,material,orb,0,1.15,0,[.53,.68,.36]);
+      const band=ring(orb,'#dffaff',.52);band.position.y=1.13;band.rotation.z=.3;
+    }else{
+      mesh(geometries.sphereFine,material,orb,0,1.14,0,[.46,.46,.46]);
+      for(let i=0;i<4;i++){
+        const shard=mesh(geometries.crystal,material,orb,Math.cos(i*Math.PI/2)*.57,1.14,
+          Math.sin(i*Math.PI/2)*.57,[.16,.25,.16]);shard.rotation.y=i;
+      }
+    }
+    group.add(pickupLabel(style.title,style.color));
+    buffs[kind]={group,orb,halo};
+  }
+  const elimination=new THREE.Group();scene.add(elimination);elimination.visible=false;
+  const elimSphere=mesh(geometries.sphereFine,basic('#ffda77',{transparent:true,opacity:.8,depthWrite:false}),elimination,0,.95,0);
+  elimSphere.castShadow=false;
+  const elimRing=ring(elimination,'#fff0ac');elimRing.position.y=.09;
+  const elimRays=[];
+  for(let i=0;i<14;i++){
+    const ray=mesh(geometries.crystal,basic(i%2?'#fff2b6':'#ffa763',{toneMapped:false}),
+     elimination,0,.5,0,[.12,.4,.12]);ray.castShadow=false;elimRays.push(ray);
+  }
+  const impactFX=ring(scene,'#fff1d4');impactFX.visible=false;impactFX.position.y=.15;
   const guide = new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),5,'#d8ff52',.6,.28);
   scene.add(guide); guide.visible=false;
   const raycaster=new THREE.Raycaster();
@@ -576,9 +629,38 @@ export function createArena3D(inputCanvas) {
     const cameraJitter=shake>0?.055*Math.min(6,shake):0;
     camera.position.set(Math.sin(t*41)*cameraJitter,CAMERA_HEIGHT,CAMERA_DEPTH+Math.cos(t*35)*cameraJitter);
     camera.lookAt(0,0,0);
-    for(let i=0;i<2;i++)updateHuman(humans[i],g.players[i],g,t,dt);
+    for(let i=0;i<humans.length;i++){
+      if(i<g.players.length)updateHuman(humans[i],g.players[i],g,t,dt);
+      else{humans[i].root.visible=false;humans[i].hpRoot.visible=false;}
+    }
     if(g.shooter){
       bomb.visible=false;guide.visible=false;bonus.visible=false;explosionFX.visible=false;
+      buffRoot.visible=!!g.powerup;
+      for(const [type,pick] of Object.entries(buffs))pick.group.visible=type===g.powerup?.type;
+      if(g.powerup){
+        buffRoot.position.copy(world(g.powerup.x,g.powerup.y));
+        const picked=buffs[g.powerup.type];
+        if(picked){picked.orb.rotation.y=t*1.6;picked.orb.position.y=Math.sin(t*4)*.14;
+          picked.halo.material.opacity=.6+.26*Math.sin(t*5);}
+      }
+      elimination.visible=!!g.eliminationFx;
+      if(g.eliminationFx){
+        const fx=g.eliminationFx,age=1.4-fx.t,progress=clamp(age/1.4,0,1);
+        elimination.position.copy(world(fx.x,fx.y));
+        elimSphere.scale.setScalar(.25+progress*2.1);elimSphere.material.opacity=(1-progress)*.85;
+        elimRing.scale.setScalar(1+progress*4);elimRing.material.opacity=(1-progress);
+        for(let i=0;i<elimRays.length;i++){
+          const angle=i*Math.PI*2/elimRays.length+age*.6;
+          const o=elimRays[i],radius=.5+progress*2.9;
+          o.position.set(Math.cos(angle)*radius,.42+Math.sin(age*6+i)*.2,Math.sin(angle)*radius);
+          o.rotation.y=angle;o.scale.setScalar(.55*(1-progress));
+        }
+      }
+      impactFX.visible=!!g.hitFx;
+      if(g.hitFx){const fx=g.hitFx;impactFX.position.copy(world(fx.x,fx.y,.24));
+        impactFX.scale.setScalar(1+(1-fx.t/.28)*1.5);
+        impactFX.material.color.set(fx.color);impactFX.material.opacity=clamp(fx.t/.28,0,1);}
+
       for(const v of trail)v.visible=false;
       for(let i=0;i<shooterShots.length;i++){
         const b=g.bullets?.[i],o=shooterShots[i];
@@ -609,7 +691,7 @@ export function createArena3D(inputCanvas) {
       if(composer&&g.map.name!=='SON ŞANS')composer.render();else renderer.render(scene,camera);
       return;
     }
-    bomb.visible=true;
+    bomb.visible=true;buffRoot.visible=false;elimination.visible=false;impactFX.visible=false;
     for(const o of shooterShots)o.visible=false;
     const bp=world(g.bomb.x,g.bomb.y,1.0+(g.bomb.mode==='flying'?.38:0));
     bomb.position.copy(bp);bomb.rotation.y=t*2;
