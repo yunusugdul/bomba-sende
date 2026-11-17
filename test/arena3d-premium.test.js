@@ -54,7 +54,7 @@ test('detailed 3D environment and optional bloom remain visual-only',()=>{
   assert.match(detail,/shadowAt\(/);
   assert.match(view,/createArenaDetailKit/);
   assert.match(view,/UnrealBloomPass\.js/);
-  assert.match(view,/if\(composer\)composer\.render\(\);else renderer\.render\(scene,camera\)/);
+  assert.match(view,/if\(composer&&g\.map\.name!=='SON ŞANS'\)composer\.render\(\);else renderer\.render\(scene,camera\)/);
 });
 test('all local Three.js addon module assets are reachable by the server',async()=>{
   await new Promise(resolve=>server.server.listen(0,'127.0.0.1',resolve));
