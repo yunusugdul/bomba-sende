@@ -15,9 +15,9 @@ const rand=(a,b)=>a+Math.random()*(b-a), choose=a=>a[Math.floor(Math.random()*a.
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const unit=(x,y)=>{let n=Math.hypot(x,y);return n>.00001?{x:x/n,y:y/n}:{x:1,y:0}};
 const MAPS=[
- {name:'NEON PARK',glow:'#a591ff',floor:'#15152e',blocks:[{x:350,y:95,w:70,h:128},{x:581,y:337,w:70,h:128},{x:450,y:233,w:100,h:96}],features:[]},
+ {name:'NEON PARK',glow:'#a591ff',floor:'#15152e',blocks:[{x:320,y:95,w:70,h:128},{x:620,y:337,w:70,h:128},{x:450,y:233,w:100,h:96}],features:[]},
  {name:'BUZ LABİRENTİ',glow:'#79edff',floor:'#112b39',blocks:[{x:318,y:153,w:64,h:246},{x:616,y:153,w:64,h:246},{x:451,y:75,w:98,h:68},{x:451,y:422,w:98,h:65}],features:[]},
- {name:'PORTAL PARTİSİ',glow:'#ff7dc6',floor:'#25142f',blocks:[{x:383,y:112,w:65,h:145},{x:552,y:306,w:65,h:145},{x:451,y:242,w:98,h:78}],features:[{kind:'portal',x:182,y:138,r:36,to:1},{kind:'portal',x:825,y:425,r:36,to:0}]},
+ {name:'PORTAL PARTİSİ',glow:'#ff7dc6',floor:'#25142f',blocks:[{x:330,y:112,w:65,h:145},{x:605,y:306,w:65,h:145},{x:451,y:242,w:98,h:78}],features:[{kind:'portal',x:182,y:138,r:36,to:1},{kind:'portal',x:825,y:425,r:36,to:0}]},
  {name:'SEK SEK',glow:'#ffd16e',floor:'#29212e',blocks:[{x:260,y:200,w:110,h:65},{x:630,y:300,w:110,h:65},{x:465,y:60,w:70,h:95},{x:465,y:407,w:70,h:95}],features:[{kind:'bumper',x:500,y:281,r:29},{kind:'bumper',x:146,y:283,r:28},{kind:'bumper',x:854,y:281,r:28}]},
  {name:'SON ŞANS',glow:'#d8ff52',floor:'#142226',blocks:[{x:300,y:92,w:75,h:121},{x:625,y:350,w:75,h:121},{x:475,y:215,w:50,h:133}],features:[{kind:'ice',x:500,y:280,r:123},{kind:'bumper',x:150,y:440,r:31},{kind:'bumper',x:850,y:123,r:31}]}
 ];
