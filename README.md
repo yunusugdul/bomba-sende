@@ -73,3 +73,26 @@ The 3D renderer's first implementation uses procedural models: stylized animated
 humans, raised obstacles, feature meshes, bomb/trail, pickups, player labels,
 projectile effects, glow rails, ambient lighting and dynamic shadows.
 It adds no gameplay actions or rules.
+
+
+## Kaos Arena 3D — expanded staging multiplayer
+
+This feature branch changes **only** the separately deployed test game. Production `main` is not modified.
+
+**Game modes**
+- **1v1 duel**: original five Bomba Sende arenas, configurable 3/5/7 rounds, one elimination per round.
+- **2v2 teams**: host + three guests in one online room. Teams are slots 0+2 vs 1+3, friendly fire disabled; first team to the selected elimination target wins. Respawns enabled.
+- **4-player free-for-all**: individual scores and respawns; first to 3/5/7 eliminations wins.
+
+All four participants must join before a four-player match can start. The host runs authoritative simulation, the WebSocket server relays each guest's controls by stable `slot`, and clients receive synchronized game state. Bot/local modes remain 1v1.
+
+**Selectable weapons**: pistol (20 damage, 16 rounds), rifle (12 damage, 28 rounds), shotgun (6×12 damage per shot, 6 rounds, short range), sniper (55 damage, 5 rounds). Fire rate, projectile speed, spread, range, reload time and recoil are unique to each weapon. Players choose their weapon in the lobby; the selected loadout is sent during countdown.
+
+**Power-ups**: healing (+45 HP up to 100), speed (+45% for 5 seconds), shield (2.3 seconds) and damage (+50% for 5 seconds). Each pickup spawns in a validated free area away from players and obstacles, expires, and is limited to one at a time.
+
+**Presentation**: four colored 3D combatants, distinctive weapon proportions, muzzle flashes, recoil, colored projectile trails/impacts, hit feedback, elimination bursts, winner pose, HUD health bars, and themed scenery outside the original collision footprint. Procedural ambient audio changes with the arena and respects mute. Gunshots use the locally bundled CC0-derived WAV documented in [AUDIO_CREDITS.md](AUDIO_CREDITS.md).
+
+**Staging**: https://bomba-sende-3d-test.onrender.com (isolated Render service).
+**Production**: https://bomba-sende.onrender.com — unchanged.
+
+Run `npm install && npm test && npm start` to verify room protocol and source-level gameplay regression tests. For gameplay sign-off, manually test both duel and four-client online matches in a real WebGL browser. Do not merge to `main` without explicit approval.
