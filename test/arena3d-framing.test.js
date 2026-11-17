@@ -43,7 +43,7 @@ test('bomb has no white animated glints and characters remain high contrast',()=
  assert.match(view,/hotWick=mesh\(geometries\.sphere,basic\('#ff9f28'/);
  assert.match(view,/spark\.scale\.setScalar\(1\)/);
  assert.match(view,/fuseHalo\.intensity=\.65/);
- assert.match(view,/emissive:id===0\?'#94c800':'#e91e77'/);
+ assert.match(view,/emissive:\['#94c800','#e91e77'/);
  assert.match(view,/const a=ring\(root,hex,1\.12\);a\.position\.y=\.07;a\.material\.opacity=1/);
 });
 test('3D obstacles are truly extruded with separate bevelled material sides, within the same collision footprints',()=>{
