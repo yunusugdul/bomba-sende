@@ -183,7 +183,9 @@ function startShooterRound(){
  const g=game;
  g.shooter=true;
  g.round=0;
- g.score=[0,0];g.shotsFired=[0,0];
+ g.score=Array(g.rules.battleMode==='ffa'?4:2).fill(0);g.teamScores=[0,0];
+ g.shotsFired=Array(g.players.length).fill(0);g.stats.throws=Array(g.players.length).fill(0);g.stats.hits=Array(g.players.length).fill(0);
+ g.powerup=null;g.powerDelay=5.5;g.eliminationFx=null;g.victoryId=null;g.battleMode=g.rules.battleMode;
  g.rules.panic=false;g.rules.chaos=false;g.rules.cards=false;g.rules.upgrades=false;
  g.fuse=999;g.initialFuse=999;g.holder=-1;
  g.bomb={mode:'hidden',owner:0,x:500,y:281,vx:0,vy:0,trail:[],life:0};
@@ -196,12 +198,15 @@ function beginShooterRound(){
  const index=arenaOption==='cycle'?(g.round-1)%MAPS.length:
    arenaOption==='random'?Math.floor(rand(0,MAPS.length)):Number(arenaOption);
  g.map=MAPS[index];g.phase='countdown';g.phaseTime=1.8;
- g.bullets=[];g.roundWinner=null;
+ g.bullets=[];g.roundWinner=null;g.powerup=null;g.powerDelay=4.5;
  g.card=null;g.chaos=null;g.snowPatches=[];g.snowDelay=1.3;g.elapsed=0;
- for(let i=0;i<2;i++){
-  const p=g.players[i];p.x=i?850:150;p.y=281;p.vx=0;p.vy=0;
-  p.hp=SHOOTER_HP;p.dead=false;p.respawn=0;p.invulnerable=.35;
-  p.shooting=false;p.ammo=SHOOTER_CLIP;p.reload=0;p.fireCD=0;p.muzzle=0;p.hitFlash=0;
+ const starts=[[155,120],[845,442],[155,442],[845,120]];
+ for(let i=0;i<g.players.length;i++){
+  const p=g.players[i],start=starts[i];p.x=start[0];p.y=start[1];p.vx=0;p.vy=0;
+  p.team=i%2;p.hp=SHOOTER_HP;p.dead=false;p.respawn=0;p.invulnerable=.35;
+  p.weapon= i===0?options.weapon:(p.weapon||'pistol');
+  p.shooting=false;p.ammo=playerWeapon(p).clip;p.reload=0;p.fireCD=0;p.muzzle=0;p.hitFlash=0;
+  p.buffSpeedTime=0;p.buffDamageTime=0;p.buffShieldTime=0;p.recoil=0;
   p.shieldTime=0;p.parryCD=0;p.parryTime=0;p.dashCD=0;p.dashTime=0;
   p.stun=0;p.portalCD=0;p.upgrades=[];p.card=null;
   p.aim={x:i?-1:1,y:0};p.face={x:i?-1:1,y:0};
@@ -240,25 +245,29 @@ function shooterLineClear(x,y,tx,ty){
 }
 function shooterReload(id){
  if(!game||game.phase!=='active')return;
- const p=game.players[id];if(!p||p.dead||p.reload>0||p.ammo>=SHOOTER_CLIP)return;
- p.reload=1.1;p.shooting=false;snd('reload',id===0?.8:.4);
+ const p=game.players[id];if(!p||p.dead||p.reload>0||p.ammo>=playerWeapon(p).clip)return;
+ p.reload=playerWeapon(p).reload;p.shooting=false;snd('reload',id===0?.8:.4);
  if(id===0)alertToast('↻ ŞARJÖR DEĞİŞTİRİLİYOR',.65);
 }
 function shooterFire(p){
  const g=game;
  if(!p||p.dead||p.fireCD>0||p.reload>0||g.phase!=='active')return;
  if(p.ammo<=0){shooterReload(p.id);return;}
- const direction=aimOf(p);
- const speed=950,spawn=30;
- const bullet={id:(g.shotsFired[p.id]+1)+'-'+p.id,owner:p.id,
-   x:p.x+direction.x*spawn,y:p.y+direction.y*spawn,
-   vx:direction.x*speed,vy:direction.y*speed,t:.96,color:p.color};
- p.ammo--;p.fireCD=.17;p.muzzle=.085;p.aim=direction;
- g.stats.throws[p.id]++;
- g.bullets.push(bullet);g.shotsFired[p.id]++;
- if(g.bullets.length>80)g.bullets.splice(0,g.bullets.length-80);
- burst(bullet.x,bullet.y,'#ffd785',4,95);
- snd('shot',p.id===0?.65:.38);
+ const weapon=playerWeapon(p),direction=aimOf(p),spawn=32;
+ for(let n=0;n<weapon.pellets;n++){
+  const angle=(Math.random()-.5)*weapon.spread+(n-(weapon.pellets-1)/2)*(weapon.spread/Math.max(1,weapon.pellets));
+  const dx=direction.x*Math.cos(angle)-direction.y*Math.sin(angle);
+  const dy=direction.y*Math.cos(angle)+direction.x*Math.sin(angle);
+  g.bullets.push({id:g.shotsFired[p.id]+'-'+p.id+'-'+n,owner:p.id,
+    x:p.x+dx*spawn,y:p.y+dy*spawn,vx:dx*weapon.speed,vy:dy*weapon.speed,
+    t:weapon.range,damage:weapon.damage*(p.buffDamageTime>0?1.5:1),
+    color:weapon.color,weapon:p.weapon});
+ }
+ p.ammo--;p.fireCD=weapon.rate;p.muzzle=.085;p.recoil=weapon.recoil;p.aim=direction;
+ g.stats.throws[p.id]++;g.shotsFired[p.id]++;
+ if(g.bullets.length>120)g.bullets.splice(0,g.bullets.length-120);
+ burst(p.x+direction.x*35,p.y+direction.y*35,'#ffcf78',7,130);
+ snd('shot',p.id===(options.mode==='online'?net.slot:0)? .70:.40,p.weapon);
  if(p.ammo===0){shooterReload(p.id);p.shooting=true;}
 }
 function shooterHit(p,owner,x,y){
@@ -267,21 +276,32 @@ function shooterHit(p,owner,x,y){
  if(p.shieldTime>0||p.parryTime>0){
   ring(x,y,'#75e8ff',36,.19);snd('parry',.21);return;
  }
- p.hp=Math.max(0,p.hp-SHOOTER_DAMAGE);p.hitFlash=.22;
- g.stats.hits[owner]++;burst(x,y,p.color,12,135);ring(x,y,'#ffffff',25,.15);
+ p.hp=Math.max(0,p.hp-(arguments.length>4?arguments[4]:SHOOTER_DAMAGE));p.hitFlash=.24;
+ g.stats.hits[owner]++;burst(x,y,p.color,18,165);ring(x,y,'#fff1b0',35,.22);
+ g.hitFx={x,y,t:.28,color:p.color};shakes=Math.max(shakes,4);
  snd('damage',p.id===0?.7:.3);
  if(p.hp>0)return;
  p.dead=true;p.respawn=0;p.shooting=false;p.vx=p.vy=0;
- g.score[owner]++;g.roundWinner=owner;g.phase='roundwin';g.phaseTime=1.6;
- burst(p.x,p.y,p.color,34,230);ring(p.x,p.y,'#ffe08a',98,.4);
- snd('eliminate',.8);alertToast(g.players[owner].name+' TURU KAZANDI!',1.3);
+ const multi=g.rules.battleMode!=='duel',points=g.rules.rounds;
+ const team=owner%2;
+ if(g.rules.battleMode==='team')g.score[team]++;
+ else g.score[owner]++;
+ g.roundWinner=owner;
+ g.eliminationFx={x:p.x,y:p.y,t:1.4,color:p.color};
+ burst(p.x,p.y,p.color,42,230);ring(p.x,p.y,'#ffe08a',110,.55);
+ snd('eliminate',.8);alertToast(g.players[owner].name+' ELEME YAPTI!',1.3);
+ if(!multi){g.phase='roundwin';g.phaseTime=1.6;}
+ else if(g.score[g.rules.battleMode==='team'?team:owner]>=points){
+  g.phase='finished';g.victoryId=owner;shooterMatchOver(g.rules.battleMode==='team'?team:owner);
+ }else{p.respawn=1.8;}
 }
 function shooterMatchOver(winner){
- const g=game;
- if(options.mode==='online'&&net.role==='guest')return;
- showOverlay('SÜRESİZ ARENA • '+g.rules.rounds+' TUR','🏆',
-   g.players[winner].name+' KAZANDI!',
-   'Skor '+g.score.join(' – ')+'. '+g.stats.throws[0]+' atış • '+g.stats.hits[0]+' isabet.',
+ const g=game;if(options.mode==='online'&&net.role==='guest')return;
+ const teamMode=g.rules.battleMode==='team';
+ const who=teamMode?(winner===0?'MAVİ TAKIM':'KIRMIZI TAKIM'):g.players[winner]?.name||'OYUNCU';
+ showOverlay(g.rules.battleMode==='duel'?g.rules.rounds+' TURLUK DÜELLO':g.rules.battleMode==='ffa'?'HERKES TEK':'2V2 TAKIM SAVAŞI',
+    '🏆',who+' KAZANDI!',
+   'Skor '+g.score.join(' – ')+'. '+(g.stats.throws[0]||0)+' atış • '+(g.stats.hits[0]||0)+' isabet.',
    [{label:'↻ YENİ MAÇ',action:()=>{if(options.mode==='online'){
       netSend({type:'rematch'});showOverlay('RÖVANŞ','⏳','RAKİP BEKLENİYOR','Yeni maç başlatılıyor.',[]);
     }else{newGame();game.phase='countdown';hideOverlay();}}},
@@ -296,9 +316,11 @@ function shooterAdvanceBullets(dt){
   if(blocked(b.x,b.y,4)||g.map.features.some(f=>f.kind==='bumper'&&Math.hypot(b.x-f.x,b.y-f.y)<f.r+3)){
    b.t=0;burst(b.x,b.y,'#ffd28b',5,85);continue;
   }
-  const p=g.players[1-b.owner];
-  if(!p.dead&&Math.hypot(b.x-p.x,b.y-p.y)<p.r+5){
-   b.t=0;shooterHit(p,b.owner,b.x,b.y);
+  for(const p of g.players){
+   if(p.id===b.owner||p.dead||(g.rules.battleMode==='team'&&p.team===b.owner%2))continue;
+   if(Math.hypot(b.x-p.x,b.y-p.y)<p.r+5){
+    b.t=0;shooterHit(p,b.owner,b.x,b.y,b.damage||SHOOTER_DAMAGE);break;
+   }
   }
  }
  g.bullets=g.bullets.filter(b=>b.t>0);
