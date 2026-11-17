@@ -190,7 +190,6 @@ body.is-playing .arena-chat-form button{padding:5px 6px}
 body.shooter-mode .fuse-container { display:none!important; }
 body.shooter-mode .rules-editor > label[for="rulesPreset"],
 body.shooter-mode #rulesPreset,
-body.shooter-mode .rules-columns > label:nth-child(2),
 body.shooter-mode .rules-toggles,
 body.shooter-mode .persistence-field,
 body.shooter-mode .rules-summary {display:none!important;}
