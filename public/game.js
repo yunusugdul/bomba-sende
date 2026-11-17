@@ -268,7 +268,7 @@ function drawPlayer(p){const t=globalTime,carrying=game.holder===p.id;const glow
  if(p.stun>0)text('❄',0,-61,26,'#8beaff');
  if(p.dashTime>0){ctx.save();ctx.globalAlpha=.45;for(let i=1;i<=3;i++){ctx.beginPath();ctx.arc(-p.face.x*i*17,-p.face.y*i*17,21-i*2,0,TAU);ctx.fillStyle=p.color;ctx.fill()}ctx.restore()}
  ctx.shadowColor=p.color;ctx.shadowBlur=20;ctx.fillStyle=p.id===0?'#c9ff65':'#ff93cf';ctx.strokeStyle='#111324';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,23,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle='#1d182e';ctx.beginPath();ctx.arc(p.face.x*6-7,p.face.y*4-3,3.5,0,TAU);ctx.arc(p.face.x*6+7,p.face.y*4-3,3.5,0,TAU);ctx.fill();ctx.strokeStyle='#32223e';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,6,5,0,Math.PI);ctx.stroke();
- ctx.save();ctx.textAlign='center';rounded(-50,35,100,22,5,'#0c0e21d9',p.color+'bb');text(p.name.length>12?p.name.slice(0,11)+'…':p.name,0,46,11,'#ffffff',900);ctx.restore();
+ // Names remain in the score HUD only, including when 2D fallback is active.
  if(p.charging&&carrying&&game.bomb.mode==='held'){const amount=clamp(p.charge/.85,0,1);ctx.lineWidth=5;ctx.strokeStyle='#ffffff48';ctx.beginPath();ctx.arc(0,0,39,-Math.PI/2,1.5*Math.PI);ctx.stroke();ctx.strokeStyle=amount>.85?'#ff83c9':'#ddff67';ctx.beginPath();ctx.arc(0,0,39,-Math.PI/2,-Math.PI/2+TAU*amount);ctx.stroke()}
  ctx.restore()}
 function drawBomb(){const g=game,b=g.bomb;if(b.mode!=='held'){for(let i=0;i<b.trail.length;i++){const tr=b.trail[i];ctx.globalAlpha=clamp(tr.t/.32,0,1)*.55;ctx.fillStyle='#ffe385';ctx.beginPath();ctx.arc(tr.x,tr.y,4+i/Math.max(1,b.trail.length)*9,0,TAU);ctx.fill()}ctx.globalAlpha=1}
