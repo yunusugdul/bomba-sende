@@ -375,6 +375,26 @@ export function createArena3D(inputCanvas) {
   scene.add(guide); guide.visible=false;
   const raycaster=new THREE.Raycaster();
   const pointerPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+  // Optional desktop post-processing. Mobile retains a single fast render pass.
+  // If a browser cannot load an addon, standard Three.js rendering keeps the game playable.
+  let composer=null;
+  if(!lowPower){
+    Promise.all([
+      import('/vendor/addons/postprocessing/EffectComposer.js'),
+      import('/vendor/addons/postprocessing/RenderPass.js'),
+      import('/vendor/addons/postprocessing/UnrealBloomPass.js'),
+      import('/vendor/addons/postprocessing/OutputPass.js')
+    ]).then(([ec,rp,bp,op])=>{
+      if(!renderer.domElement.isConnected)return;
+      const pipeline=new ec.EffectComposer(renderer);
+      pipeline.setPixelRatio(pixelRatio);
+      pipeline.addPass(new rp.RenderPass(scene,camera));
+      pipeline.addPass(new bp.UnrealBloomPass(new THREE.Vector2(1,1),.34,.38,.85));
+      pipeline.addPass(new op.OutputPass());
+      pipeline.setSize(Math.max(1,cachedW),Math.max(1,cachedH));
+      composer=pipeline;
+    }).catch(error=>console.info('Optional Three.js bloom unavailable:',error));
+  }
   let lastFrame=performance.now();
   let cachedW=0,cachedH=0;
   function resize(){
@@ -382,6 +402,7 @@ export function createArena3D(inputCanvas) {
     if(w===cachedW&&h===cachedH)return;
     cachedW=w;cachedH=h;
     renderer.setSize(w,h,false);
+    composer?.setSize(w,h);
     // Fit the same logical arena regardless of actual screen shape.
     const aspect=w/h;
     const visibleW=Math.max(44,24.75*aspect);
@@ -463,7 +484,7 @@ export function createArena3D(inputCanvas) {
         guide.setColor(p.charge>.8?'#ff83c9':'#d8ff52');guide.visible=true;
       }
     }
-    renderer.render(scene,camera);
+    if(composer)composer.render();else renderer.render(scene,camera);
   }
   function dispose(){
     composer?.dispose();detailKit.dispose();renderer.dispose();renderer.domElement.remove();
