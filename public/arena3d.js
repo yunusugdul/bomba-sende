@@ -97,9 +97,69 @@ export function createArena3D(inputCanvas) {
   const detailKit=createArenaDetailKit(THREE,{stage,world,block,mesh,track,ring,geometries,lowPower});
   let stageDetail=null;
   let currentQualityRatio=pixelRatio;
-  function resetMap(map) {
+  let classicMapTexture=null;
+  function buildClassicMap(map){
+    // The exact original Bomba Sende layouts, backdrops, flat central circle and
+    // low-profile solid obstacles. Player/gun models remain full 3D.
+    scene.background.set(map.floor).lerp(color('#090c1d'),.33);
+    scene.fog.color.copy(scene.background);
+    currentQualityRatio=pixelRatio;
+    renderer.setPixelRatio(pixelRatio);composer?.setPixelRatio(pixelRatio);
+    const canvas=document.createElement('canvas');canvas.width=1000;canvas.height=562;
+    const c=canvas.getContext('2d');
+    c.fillStyle=map.floor;c.fillRect(0,0,1000,562);
+    const grad=c.createRadialGradient(500,281,35,500,281,560);
+    grad.addColorStop(0,map.glow+'34');grad.addColorStop(1,'#090b1d');
+    c.fillStyle=grad;c.fillRect(0,0,1000,562);
+    c.strokeStyle='#d8e4ff0c';c.lineWidth=1;
+    for(let x=0;x<=1000;x+=52){c.beginPath();c.moveTo(x,0);c.lineTo(x,562);c.stroke();}
+    for(let y=0;y<=562;y+=52){c.beginPath();c.moveTo(0,y);c.lineTo(1000,y);c.stroke();}
+    c.strokeStyle=map.glow+'25';c.lineWidth=3;c.setLineDash([12,14]);
+    c.beginPath();c.arc(500,281,190,0,Math.PI*2);c.stroke();c.setLineDash([]);
+    c.strokeStyle=map.glow+'42';c.lineWidth=4;
+    c.strokeRect(23,23,954,516);
+    classicMapTexture?.dispose();
+    classicMapTexture=new THREE.CanvasTexture(canvas);
+    classicMapTexture.colorSpace=THREE.SRGBColorSpace;
+    const floor=mesh(new THREE.PlaneGeometry(WIDTH/S,HEIGHT/S),
+       basic('#ffffff',{map:classicMapTexture,toneMapped:false}),stage,0,-.02,0);
+    floor.rotation.x=-Math.PI/2;floor.castShadow=false;floor.receiveShadow=false;
+    const pale=mat('#322d4c',{metalness:.12,roughness:.79});
+    const side=mat(map.glow,{metalness:.07,roughness:.63});
+    const top=mat('#aaa0c7',{metalness:.03,roughness:.75});
+    // Simple shallow soft-edged arena walls that mirror the 2D original.
+    for(const [x,z,w,d] of [[0,-11.3,40.6,.27],[0,11.3,40.6,.27],[-20.14,0,.27,23],[20.14,0,.27,23]]){
+      block(stage,x,.28,z,w,.52,d,pale);
+      track(stage,x,z,w,d,map.glow,.57,.72);
+    }
+    for(const b of map.blocks){
+      const p=world(b.x+b.w/2,b.y+b.h/2),w=b.w/S,d=b.h/S;
+      block(stage,p.x,.29,p.z,w,.58,d,pale);
+      block(stage,p.x,.60,p.z,w*.95,.08,d*.95,top);
+      for(const sign of [-1,1]){
+        track(stage,p.x,p.z+sign*(d*.46),w*.80,.05,map.glow,.67,.68);
+      }
+    }
+    for(const feature of map.features){
+      const p=world(feature.x,feature.y,.06),radius=feature.r/S;
+      if(feature.kind==='portal'){
+        const a=ring(stage,map.glow,radius);a.position.set(p.x,.08,p.z);
+        const b=ring(stage,'#eabaff',radius*.74);b.position.set(p.x,.12,p.z);
+      }else if(feature.kind==='bumper'){
+        const circle=mesh(geometries.cylinder,side,stage,p.x,.22,p.z,[radius,.24,radius]);
+        circle.castShadow=false;
+        const rim=ring(stage,'#fff0b1',radius*.90);rim.position.set(p.x,.48,p.z);
+      }else if(feature.kind==='ice'){
+        const ice=ring(stage,'#adf6ff',radius);ice.position.set(p.x,.055,p.z);
+        ice.material.opacity=.42;
+      }
+    }
+  }
+  function resetMap(map,simple=false) {
+
     disposeGroup(stage);
     accent=map.glow; lastMap=map.name;
+    if(simple){stageDetail=null;buildClassicMap(map);return;}
     const palette={
       'NEON PARK':'#2d3262','BUZ LABİRENTİ':'#2d718e','PORTAL PARTİSİ':'#513668',
       'SEK SEK':'#674663','SON ŞANS':'#2e6150'
@@ -162,8 +222,8 @@ export function createArena3D(inputCanvas) {
   function makeHuman(hex,name,id) {
     const root = new THREE.Group(); scene.add(root);
     const model=new THREE.Group();root.add(model);
-    const suit=mat(id===0?'#ddff47':'#ff5ac4',{metalness:.02,roughness:.54,emissive:id===0?'#a0d512':'#ee3189',emissiveIntensity:.64});
-    const suitDark=mat(id===0?'#3f9853':'#b5357b',{metalness:.06,roughness:.57,emissive:id===0?'#155424':'#63103e',emissiveIntensity:.22});
+    const suit=mat(id===0?'#c9ff1f':'#ff43ac',{metalness:.04,roughness:.53,emissive:id===0?'#94c800':'#e91e77',emissiveIntensity:.76});
+    const suitDark=mat(id===0?'#45a947':'#e24d97',{metalness:.04,roughness:.6,emissive:id===0?'#2b8423':'#ae2a70',emissiveIntensity:.32});
     const skin=mat(id===0?'#f1bd98':'#edb08b',{roughness:.82,metalness:0});
     const hair=mat(id===0?'#242136':'#30253a',{roughness:.87,metalness:0});
     const bright=basic(hex,{toneMapped:false});
@@ -198,7 +258,7 @@ export function createArena3D(inputCanvas) {
     const charge=ring(root,'#e3ff65',1.46);charge.position.y=.13;
     // High detail combat suit without changing the old 21px physical collision radius.
     const alloy=mat(id===0?'#293d3b':'#433048',{metalness:.68,roughness:.28});
-    const trim=mat(id===0?'#c7ec52':'#ff87cc',{metalness:.48,roughness:.3,
+    const trim=mat(id===0?'#daff46':'#ff6dbb',{metalness:.25,roughness:.36,
       emissive:id===0?'#aaff3d':'#ff48a9',emissiveIntensity:1.55});
     block(model,0,1.47,.44,.78,.47,.17,alloy);
     block(model,0,1.50,.54,.43,.09,.057,trim);
@@ -242,7 +302,7 @@ export function createArena3D(inputCanvas) {
     hpFill.castShadow=false;
     return {root,model,arms,legs,a,carry,defense,charge,gun,muzzle,hpRoot,hpFill,prevX:null,prevZ:null};
   }
-  const humans=[makeHuman('#d8ff52','SEN',0),makeHuman('#ff81c4','RAKİP',1)];
+  const humans=[makeHuman('#baff22','SEN',0),makeHuman('#ff3fa9','RAKİP',1)];
   function updateHuman(o,p,g,t,dt) {
     const target=world(p.x,p.y);
     if (o.prevX===null || Math.hypot(target.x-o.root.position.x,target.z-o.root.position.z)>5) o.root.position.copy(target);
@@ -509,7 +569,7 @@ export function createArena3D(inputCanvas) {
   function draw(g,t,particles,rings,shake=0) {
     resize();
     // Guest snapshots contain a fresh JSON map object every 33 ms: compare the map name.
-    if(g.map.name!==lastMap)resetMap(g.map);
+    if(g.map.name!==lastMap)resetMap(g.map,!!g.shooter);
     stageDetail?.update(t);
     const now=performance.now(),dt=Math.min(.07,(now-lastFrame)/1000);lastFrame=now;
     // Camera shake only changes presentation, never the targeting plane or simulation.
@@ -614,7 +674,7 @@ export function createArena3D(inputCanvas) {
     if(composer&&g.map.name!=='SON ŞANS')composer.render();else renderer.render(scene,camera);
   }
   function dispose(){
-    composer?.dispose();detailKit.dispose();snowTexture.dispose();snowGeometry.dispose();
+    composer?.dispose();detailKit.dispose();classicMapTexture?.dispose();snowTexture.dispose();snowGeometry.dispose();
     shotGeometry.dispose();shotMaterial.dispose();
     for(const human of humans){human.hpRoot.traverse(o=>{if(o.isMesh){o.geometry?.dispose();o.material?.dispose();}});}
     renderer.dispose();renderer.domElement.remove();
