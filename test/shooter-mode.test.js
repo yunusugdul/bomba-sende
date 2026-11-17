@@ -100,7 +100,7 @@ test('a blocked hit causes no damage; fifth clear hit defeats player and scores'
  const src=extract('function shooterHit(p,owner,x,y,damage=SHOOTER_DAMAGE){','\nfunction shooterMatchOver(');
  const victim={id:1,x:850,y:281,dead:false,hp:100,shieldTime:1,parryTime:0,invulnerable:0};
  const g={phase:'active',players:[{id:0,name:'HOST'},victim],score:[0,0],stats:{hits:[0,0]},rules:{battleMode:'duel',rounds:3}};
- const hit=Function('game','SHOOTER_DAMAGE','SHOOTER_KILLS','ring','snd','burst','alertToast','shooterMatchOver',src+'\nreturn shooterHit;')(
+ const hit=Function('game','SHOOTER_DAMAGE','SHOOTER_KILLS','ring','snd','burst','alertToast','shooterMatchOver','let shakes=0;'+src+'\nreturn shooterHit;')(
   g,20,10,()=>{},()=>{},()=>{},()=>{},()=>{throw Error('unexpected victory')});
  hit(victim,0,850,281);assert.equal(victim.hp,100,'shield must block shots');
  victim.shieldTime=0;
