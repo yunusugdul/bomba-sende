@@ -214,7 +214,33 @@ export function createArena3D(inputCanvas) {
     visor.castShadow=false;
     block(model,0,1.05,-.36,.62,.43,.21,alloy);
     block(model,0,1.13,-.49,.34,.075,.08,trim);
-    return {root,model,arms,legs,a,carry,defense,charge,prevX:null,prevZ:null};
+    // Distinctive chunky sci-fi blaster gripped with both hands.
+    // Gun faces local +Z, the player's aim rotates the whole character.
+    const gun=new THREE.Group();gun.position.set(0,1.46,.47);model.add(gun);
+    const gunDark=mat('#141c2b',{roughness:.41,metalness:.55});
+    const gunSteel=mat('#67788f',{roughness:.33,metalness:.57});
+    const gunColor=basic(id===0?'#caff55':'#ff72bd',{toneMapped:false});
+    block(gun,0,0,.29,.43,.35,.70,gunDark);
+    block(gun,0,.18,.07,.55,.11,.55,gunSteel);
+    const receiver=mesh(geometries.box,gunColor,gun,0,.215,.40,[.25,.045,.34]);
+    receiver.castShadow=false;
+    const barrel=mesh(new THREE.CylinderGeometry(.13,.16,.86,12),gunSteel,gun,0,-.025,.86);
+    barrel.rotation.x=Math.PI/2;
+    const bore=mesh(new THREE.CylinderGeometry(.085,.085,.065,14),gunDark,gun,0,-.025,1.31);
+    bore.rotation.x=Math.PI/2;
+    block(gun,0,-.27,.04,.20,.47,.25,gunDark);
+    block(gun,0,.36,.25,.18,.16,.30,gunDark);
+    const magazine=block(gun,0,-.17,.31,.27,.23,.22,gunSteel);
+    magazine.rotation.x=-.16;
+    const muzzle=mesh(new THREE.ConeGeometry(.27,.70,8),basic('#ffe27a',{
+      transparent:true,opacity:.86,depthWrite:false,toneMapped:false}),gun,0,-.03,1.55);
+    muzzle.rotation.x=Math.PI/2;muzzle.visible=false;muzzle.castShadow=false;
+    const hpRoot=new THREE.Group();scene.add(hpRoot);
+    const hpBack=block(hpRoot,0,0,-.02,2.42,.33,.10,basic('#0c1328',{toneMapped:false}));
+    hpBack.castShadow=false;
+    const hpFill=block(hpRoot,0,0,.07,2.21,.20,.09,basic(id===0?'#d8ff52':'#ff6baf',{toneMapped:false}));
+    hpFill.castShadow=false;
+    return {root,model,arms,legs,a,carry,defense,charge,gun,muzzle,hpRoot,hpFill,prevX:null,prevZ:null};
   }
   const humans=[makeHuman('#d8ff52','SEN',0),makeHuman('#ff81c4','RAKİP',1)];
   function updateHuman(o,p,g,t,dt) {
@@ -222,7 +248,21 @@ export function createArena3D(inputCanvas) {
     if (o.prevX===null || Math.hypot(target.x-o.root.position.x,target.z-o.root.position.z)>5) o.root.position.copy(target);
     else o.root.position.lerp(target,clamp(dt*22,.1,1));
     o.prevX=target.x;o.prevZ=target.z;
-    o.root.rotation.y=Math.atan2((p.face?.x||0),(p.face?.y||1));
+    o.root.visible=!g.shooter||!p.dead;
+    const facing=g.shooter?(p.aim||p.face):p.face;
+    o.root.rotation.y=Math.atan2((facing?.x||0),(facing?.y||1));
+    o.hpRoot.visible=!!g.shooter&&!p.dead;
+    if(o.hpRoot.visible){
+      o.hpRoot.position.set(o.root.position.x,3.15,o.root.position.z);
+      o.hpRoot.quaternion.copy(camera.quaternion);
+      const pct=clamp((p.hp??100)/100,0,1);
+      o.hpFill.scale.x=2.21*pct;
+      o.hpFill.position.x=-1.105*(1-pct);
+      o.hpFill.material.color.set(pct<.35?'#ff526b':p.id===0?'#d8ff52':'#ff6baf');
+    }
+    o.gun.visible=!!g.shooter;
+    if(g.shooter){o.gun.position.z=.47-(p.muzzle>0?.15:0);o.muzzle.visible=p.muzzle>0;}
+
     const moving=Math.hypot(p.vx||0,p.vy||0)>24;
     const run=moving?Math.min(1,Math.hypot(p.vx,p.vy)/260):0;
     const phase=t*12+(p.id*2);
@@ -231,8 +271,8 @@ export function createArena3D(inputCanvas) {
     for(let i=0;i<2;i++) {
       const side=i===0?-1:1;
       o.legs[i].rotation.x=Math.sin(phase+i*Math.PI)*.68*run;
-      o.arms[i].rotation.x=-Math.sin(phase+i*Math.PI)*.62*run;
-      o.arms[i].rotation.z=side*.13;
+      o.arms[i].rotation.x=g.shooter?-.87:-Math.sin(phase+i*Math.PI)*.62*run;
+      o.arms[i].rotation.z=g.shooter?side*.28:side*.13;
     }
     const holding=g.holder===p.id;
     o.carry.visible=holding;
@@ -245,7 +285,7 @@ export function createArena3D(inputCanvas) {
     if(o.charge.visible){o.charge.material.opacity=.25+clamp(p.charge/.85,0,1)*.7;o.charge.rotation.z=t*2;}
     o.a.material.opacity=p.dashTime>0?.95:.30;
     o.a.scale.setScalar(p.dashTime>0?1.4:1);
-    o.model.children[0].material.emissive?.set(p.stun>0?'#285775':'#000000');
+    o.model.children[0].material.emissive?.set(g.shooter&&p.hitFlash>0?'#ff5e4b':p.stun>0?'#285775':p.id===0?'#a0d512':'#ee3189');
     // Character names remain exclusively in the existing scoreboard.
   }
   // Recognizable hand-fused bomb: layered forged metal, warning badge, cap and live wick.
@@ -406,6 +446,15 @@ export function createArena3D(inputCanvas) {
     group.add(pickupLabel(style.title,style.color));
     pickupModels[type]={group,float,halo,halo2,style};
   }
+  // Pooled bullet meshes: no allocations in the animation loop.
+  const shotGeometry=new THREE.CylinderGeometry(.17,.17,.95,8);
+  const shotMaterial=mat('#fff0a6',{metalness:.12,roughness:.24,
+    emissive:'#ffbb47',emissiveIntensity:2.6});
+  const shooterShots=Array.from({length:42},()=>{
+    const projectile=mesh(shotGeometry,shotMaterial,effects);
+    projectile.castShadow=false;projectile.visible=false;return projectile;
+  });
+  const shotAxis=new THREE.Vector3(0,1,0),shotDir=new THREE.Vector3();
   const guide = new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),5,'#d8ff52',.6,.28);
   scene.add(guide); guide.visible=false;
   const raycaster=new THREE.Raycaster();
@@ -468,6 +517,40 @@ export function createArena3D(inputCanvas) {
     camera.position.set(Math.sin(t*41)*cameraJitter,CAMERA_HEIGHT,CAMERA_DEPTH+Math.cos(t*35)*cameraJitter);
     camera.lookAt(0,0,0);
     for(let i=0;i<2;i++)updateHuman(humans[i],g.players[i],g,t,dt);
+    if(g.shooter){
+      bomb.visible=false;guide.visible=false;bonus.visible=false;explosionFX.visible=false;
+      for(const v of trail)v.visible=false;
+      for(let i=0;i<shooterShots.length;i++){
+        const b=g.bullets?.[i],o=shooterShots[i];
+        o.visible=!!b;
+        if(o.visible){
+          o.position.copy(world(b.x,b.y,1.35));
+          shotDir.set(b.vx,0,b.vy).normalize();
+          o.quaternion.setFromUnitVectors(shotAxis,shotDir);
+        }
+      }
+      for(let i=0;i<ripple.length;i++){
+        const r=rings[i],o=ripple[i];o.visible=!!r;
+        if(o.visible){o.position.copy(world(r.x,r.y,.18));o.scale.setScalar(r.r/S);
+          o.material.color.set(r.color);o.material.opacity=clamp(r.t/r.life,0,1);}
+      }
+      for(let i=0;i<debris.length;i++){
+        const p=particles[i],o=debris[i];o.visible=!!p;
+        if(o.visible){o.position.copy(world(p.x,p.y,.28));const q=clamp(p.size/S,.055,.22);
+          o.scale.set(q,q,q);o.material.color.set(p.col);o.material.opacity=clamp(p.t/p.max,0,1);}
+      }
+      for(let i=0;i<snow.length;i++){
+        const p=g.snowPatches?.[i],o=snow[i],r=snowRings[i];
+        o.visible=r.visible=!!p&&g.map.name==='BUZ LABİRENTİ';
+        if(o.visible){o.position.copy(world(p.x,p.y,.065));o.scale.setScalar(p.r/S);
+          o.material.opacity=clamp(p.t/.9,0,.95);
+          r.position.copy(world(p.x,p.y,.08));r.scale.setScalar(p.r/S*.92);r.material.opacity=.5;}
+      }
+      if(composer&&g.map.name!=='SON ŞANS')composer.render();else renderer.render(scene,camera);
+      return;
+    }
+    bomb.visible=true;
+    for(const o of shooterShots)o.visible=false;
     const bp=world(g.bomb.x,g.bomb.y,1.0+(g.bomb.mode==='flying'?.38:0));
     bomb.position.copy(bp);bomb.rotation.y=t*2;
     bomb.scale.setScalar(g.bomb.mode==='held'?.72:.93);
@@ -531,7 +614,10 @@ export function createArena3D(inputCanvas) {
     if(composer&&g.map.name!=='SON ŞANS')composer.render();else renderer.render(scene,camera);
   }
   function dispose(){
-    composer?.dispose();detailKit.dispose();snowTexture.dispose();snowGeometry.dispose();renderer.dispose();renderer.domElement.remove();
+    composer?.dispose();detailKit.dispose();snowTexture.dispose();snowGeometry.dispose();
+    shotGeometry.dispose();shotMaterial.dispose();
+    for(const human of humans){human.hpRoot.traverse(o=>{if(o.isMesh){o.geometry?.dispose();o.material?.dispose();}});}
+    renderer.dispose();renderer.domElement.remove();
     disposeGroup(stage);scene.clear();
   }
   return {draw,pointer,dispose};
