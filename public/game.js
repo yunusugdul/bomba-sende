@@ -149,7 +149,7 @@ function configureShooterUI(){
  $('keyDash').textContent=options.mode==='local'?'G':'SPACE';
  $('keyParry').textContent=options.mode==='local'?'H':'E';
  $('keyPower').textContent=options.mode==='local'?'R':'R';
- $('modePill').textContent=options.mode==='online'?'🌐 '+net.code+' • SİLAHLI ARENA':options.mode==='bot'?'🤖 BOT ÇATIŞMASI':'👥 İKİ OYUNCU';
+ $('modePill').textContent=options.mode==='online'?'🌐 '+net.code+' • '+({duel:'1V1',team:'2V2',ffa:'HERKES TEK'}[game.rules.battleMode]):options.mode==='bot'?'🤖 BOT ÇATIŞMASI':'👥 İKİ OYUNCU';
  $('roundLabel').textContent=(game.rules.battleMode==='duel'?'TUR 1 / ':'HEDEF ')+game.rules.rounds;
  $('fuseLabel').textContent='RAUNT';
  $('timerIcon').textContent='🎯';
@@ -915,10 +915,12 @@ function onNetMessage(d){
   const oldPhase=game.phase,oldRound=game.round,oldChaos=game.chaos,oldExplosionNotice=game.explosionNoticeShown;
   game=d.state;if(net.hostAway)game.phase='paused';
   if(SHOOTER_MODE&&game.shooter){
-    const prior=Number.isFinite(net.guestHeardShots)?net.guestHeardShots:0;
-    const next=game.shotsFired?.[1]||0;
-    if(next>prior&&next-prior<7)snd('shot',.6);
-    net.guestHeardShots=next;
+    if(!Array.isArray(net.guestShotCounts))net.guestShotCounts=[];
+    for(const p of game.players){
+      const prior=net.guestShotCounts[p.id]??0,next=game.shotsFired?.[p.id]||0;
+      if(next>prior&&next-prior<5&&p.id!==net.slot)snd('shot',.35,p.weapon);
+      net.guestShotCounts[p.id]=next;
+    }
   }
   if(game.phase==='explode'&&game.explosionNoticeShown&&!oldExplosionNotice&&!net.hostAway)showExplosionOutcome();
   if(SHOOTER_MODE&&game.phase==='roundwin'&&oldPhase!=='roundwin'){
@@ -927,8 +929,9 @@ function onNetMessage(d){
   if(oldRound!==game.round){$('mapName').textContent=game.map.name;hideOverlay();}
   if(oldChaos!==game.chaos&&game.chaos&&CHAOS[game.chaos])flashCallout(CHAOS[game.chaos].name,2);
   if(game.phase!==oldPhase){if(SHOOTER_MODE&&game.phase==='finished'){
-      const winner=game.score[0]>game.score[1]?0:1;
-      showOverlay('ARENA ÇATIŞMASI','🏆',game.players[winner].name+' KAZANDI!',game.rules.rounds+' turluk maç tamamlandı. Skor '+game.score.join(' – ')+'.',[{label:'ANA MENÜ',action:returnMenu}]);snd('win',.7);
+      const winner=game.score.indexOf(Math.max(...game.score));
+      const name=game.rules.battleMode==='team'?(winner===0?'MAVİ TAKIM':'KIRMIZI TAKIM'):game.players[winner].name;
+      showOverlay('ARENA ÇATIŞMASI','🏆',name+' KAZANDI!',game.rules.rounds+' turluk maç tamamlandı. Skor '+game.score.join(' – ')+'.',[{label:'ANA MENÜ',action:returnMenu}]);snd('win',.7);
     }else if(game.phase==='upgrade'){showUpgradeChoice();}else if(game.phase==='explode'){
      hideOverlay();snd('boom',.6);
    }else if(game.phase==='finished'){
