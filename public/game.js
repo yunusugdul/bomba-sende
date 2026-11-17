@@ -5,6 +5,14 @@
 const W=1000,H=562,R=21, TAU=Math.PI*2;
 // Staging-exclusive 3D arena deathmatch. Original game logic remains as a fallback in main.
 const SHOOTER_MODE=true, SHOOTER_HP=100, SHOOTER_DAMAGE=20, SHOOTER_CLIP=16;
+const WEAPONS=Object.freeze({
+ pistol:{name:'TABANCA',damage:20,rate:.17,clip:16,reload:1.1,speed:950,range:.96,pellets:1,spread:0,color:'#fff0a6',recoil:.12},
+ rifle:{name:'OTOMATİK TÜFEK',damage:12,rate:.085,clip:28,reload:1.4,speed:1120,range:.82,pellets:1,spread:.055,color:'#ffe395',recoil:.10},
+ shotgun:{name:'POMPALI',damage:12,rate:.7,clip:6,reload:1.7,speed:780,range:.44,pellets:6,spread:.28,color:'#ffaf83',recoil:.32},
+ sniper:{name:'KESKİN NİŞANCI',damage:55,rate:1.1,clip:5,reload:1.9,speed:1450,range:.85,pellets:1,spread:0,color:'#b1f8ff',recoil:.38}
+});
+const POWERUPS=Object.freeze({heal:{name:'SAĞLIK',color:'#8fff8a',symbol:'+'},speed:{name:'HIZ',color:'#ffe06b',symbol:'⚡'},shield:{name:'KALKAN',color:'#78d8ff',symbol:'◆'},boost:{name:'HASAR',color:'#ff9b62',symbol:'✹'}});
+const PLAYER_COLORS=['#c5ff26','#ff4cba','#73e9ff','#ffc969'];
 // Each selected 3/5/7 round is won by one elimination. No timed countdown while fighting.
 const $=id=>document.getElementById(id);
 const canvas=$('arena'), ctx=canvas.getContext('2d',{alpha:true});
@@ -27,11 +35,11 @@ const MAPS=[
 const CARDS={blink:{name:'IŞINLAN',emoji:'🌀',color:'#ab92ff'},frost:{name:'DONDUR',emoji:'❄️',color:'#75e8ff'},shield:{name:'KALKAN',emoji:'🛡️',color:'#e0f27e'}};
 const UPGRADES={rocket:{name:'ROKET MOTORU',emoji:'🚀',desc:'Bomba uçuş hızı +%22.'},magnet:{name:'MANYETİK',emoji:'🧲',desc:'Uçarken rakibe doğru hafifçe yönelir.'},bank:{name:'SEKME USTASI',emoji:'🎱',desc:'Bomba 3 yerine 5 kez sekebilir.'},dash:{name:'SERİ ATIL',emoji:'⚡',desc:'Atılma bekleme süresi %25 azalır.'},parry:{name:'REFLEKS',emoji:'🛡️',desc:'Savunma bekleme süresi %25 azalır.'},ghost:{name:'HAYALET BOMBA',emoji:'👻',desc:'Bomba iç engellerin içinden geçer; dış duvarlardan seker.'},charge:{name:'HIZLI ŞARJ',emoji:'🔋',desc:'Bombayı %20 daha hızlı doldur.'},runner:{name:'ÇEVİK ADIM',emoji:'👟',desc:'Normal hareket hızın %8 artar.'},cooling:{name:'SERİN KAN',emoji:'🧊',desc:'Dondurma etkisi %30 daha kısa sürer.'}};
 const PRESETS={fusion:{upgrades:true,chaos:true,cards:true,panic:true},evolution:{upgrades:true,chaos:false,cards:true,panic:true},party:{upgrades:false,chaos:true,cards:true,panic:true},classic:{upgrades:false,chaos:false,cards:false,panic:false}};
-const DEFAULT_RULES=()=>({preset:'fusion',arena:'cycle',rounds:5,upgradePersistence:'match',...PRESETS.fusion});
-function safeRules(value){const v=value&&typeof value==='object'?value:{},preset=Object.hasOwn(PRESETS,v.preset)?v.preset:'fusion';return {preset,arena:['cycle','random','0','1','2','3','4'].includes(String(v.arena))?String(v.arena):'cycle',rounds:[3,5,7].includes(Number(v.rounds))?Number(v.rounds):5,upgradePersistence:v.upgradePersistence==='round'?'round':'match',...Object.fromEntries(['upgrades','chaos','cards','panic'].map(k=>[k,typeof v[k]==='boolean'?v[k]:PRESETS[preset][k]]))};}
+const DEFAULT_RULES=()=>({preset:'fusion',arena:'cycle',rounds:5,battleMode:'duel',upgradePersistence:'match',...PRESETS.fusion});
+function safeRules(value){const v=value&&typeof value==='object'?value:{},preset=Object.hasOwn(PRESETS,v.preset)?v.preset:'fusion';return {battleMode:['duel','team','ffa'].includes(v.battleMode)?v.battleMode:'duel',preset,arena:['cycle','random','0','1','2','3','4'].includes(String(v.arena))?String(v.arena):'cycle',rounds:[3,5,7].includes(Number(v.rounds))?Number(v.rounds):5,upgradePersistence:v.upgradePersistence==='round'?'round':'match',...Object.fromEntries(['upgrades','chaos','cards','panic'].map(k=>[k,typeof v[k]==='boolean'?v[k]:PRESETS[preset][k]]))};}
 const CHAOS={turbo:{name:'⚡ TURBO ZAMANI!',color:'#e2ff60'}};
-let options={mode:'bot',difficulty:'normal',nickname:'KAOS KRALI',rules:DEFAULT_RULES()};
-const net={chatHistory:[],chatUnread:0,matchId:0,focusPaused:false,ws:null,role:null,slot:null,code:null,token:null,players:[],connected:false,closing:false,freeze:false,prevPhase:null,lastState:0,lastInput:0,remote:{x:0,y:0,aimX:0,aimY:0,aimActive:false},hostAway:false,retry:null,snapshots:[],seq:0};
+let options={mode:'bot',difficulty:'normal',nickname:'KAOS KRALI',weapon:'pistol',rules:DEFAULT_RULES()};
+const net={chatHistory:[],chatUnread:0,matchId:0,focusPaused:false,ws:null,role:null,slot:null,code:null,token:null,players:[],connected:false,closing:false,freeze:false,prevPhase:null,lastState:0,lastInput:0,remote:{x:0,y:0,aimX:0,aimY:0,aimActive:false},remotes:{},hostAway:false,retry:null,snapshots:[],seq:0};
 // Each remote snapshot is authoritative. Display interpolation affects rendering only,
 // never collision, timers, score, or the game simulation.
 const VIEW_DELAY=95,MAX_EXTRAPOLATE=38;
@@ -111,24 +119,27 @@ function alertToast(s,seconds=1.4){const el=$('toast');el.textContent=s;el.class
 function flashCallout(s,seconds=2){const el=$('eventCallout');el.textContent=s;el.classList.remove('hidden');calloutTimer=seconds}
 function burst(x,y,color,count=14,speed=160){for(let i=0;i<count;i++){const ang=rand(0,TAU),v=rand(speed*.25,speed);particles.push({x,y,vx:Math.cos(ang)*v,vy:Math.sin(ang)*v,size:rand(2,6),t:rand(.3,.85),max:.85,col:color})}if(particles.length>500)particles.splice(0,particles.length-500)}
 function ring(x,y,color,max=105,seconds=.48){rings.push({x,y,color,r:0,max,t:seconds,life:seconds})}
-function createPlayer(id,name){return {id,name,x:id?850:150,y:281,vx:0,vy:0,face:{x:id?-1:1,y:0},aim:{x:id?-1:1,y:0},r:R,color:id?'#ff81c4':'#d8ff52',dashCD:0,dashTime:0,parryCD:0,parryTime:0,shieldTime:0,shieldUsed:false,stun:0,portalCD:0,upgrades:[],card:null,charge:0,charging:false,speed:0,blinkTrail:[],aiThink:0,aiDecision:null}}
+function createPlayer(id,name){return {id,name,x:id?850:150,y:281,vx:0,vy:0,face:{x:id?-1:1,y:0},aim:{x:id?-1:1,y:0},r:R,color:PLAYER_COLORS[id%PLAYER_COLORS.length],dashCD:0,dashTime:0,parryCD:0,parryTime:0,shieldTime:0,shieldUsed:false,stun:0,portalCD:0,upgrades:[],card:null,charge:0,charging:false,speed:0,blinkTrail:[],aiThink:0,aiDecision:null}}
 function newGame(){particles=[];rings=[];shakes=0;keys=Object.create(null);touch.dx=touch.dy=0;
- game={phase:'ready',round:0,score:[0,0],players:[createPlayer(0,options.nickname),createPlayer(1,options.mode==='bot'?'BOT PATLATÖR':options.mode==='online'?(net.players[1]?.name||'RAKİP'):'OYUNCU 2')],holder:0,bomb:{mode:'held',owner:0,x:150,y:281,vx:0,vy:0,life:0,bounces:0,trail:[],charge:0},map:MAPS[0],fuse:18,initialFuse:18,phaseTime:0,lock:0,rules:safeRules(options.rules),upgradeOffer:[],upgradeChooser:null,upgradeTimer:0,card:null,cardDelay:3.1,chaos:null,chaosStarted:false,chaosTimer:0,snowPatches:[],snowDelay:1.1,elapsed:0,roundLoser:null,pausedFrom:null,beepMark:99,slowTime:0,stats:{throws:[0,0],hits:[0,0],parries:[0,0],dashes:[0,0]}};
+ game={phase:'ready',round:0,score:[0,0],players:Array.from({length:options.mode==='online'&&options.rules.battleMode!=='duel'?4:2},(_,i)=>createPlayer(i,i===0?options.nickname:options.mode==='bot'?'BOT PATLATÖR':options.mode==='online'?(net.players[i]?.name||'RAKİP '+i):'OYUNCU '+(i+1))),holder:0,bomb:{mode:'held',owner:0,x:150,y:281,vx:0,vy:0,life:0,bounces:0,trail:[],charge:0},map:MAPS[0],fuse:18,initialFuse:18,phaseTime:0,lock:0,rules:safeRules(options.rules),upgradeOffer:[],upgradeChooser:null,upgradeTimer:0,card:null,cardDelay:3.1,chaos:null,chaosStarted:false,chaosTimer:0,snowPatches:[],snowDelay:1.1,elapsed:0,roundLoser:null,pausedFrom:null,beepMark:99,slowTime:0,stats:{throws:[0,0],hits:[0,0],parries:[0,0],dashes:[0,0]}};
  $('landing').classList.add('hidden');$('gameScreen').classList.remove('hidden');document.body.classList.add('is-playing');
- if(options.mode==='online'){game.players[0].name=net.players[0]?.name||'KURUCU';game.players[1].name=net.players[1]?.name||'MİSAFİR';}
+ if(options.mode==='online')game.players.forEach((p,i)=>p.name=net.players[i]?.name||(i===0?'KURUCU':'MİSAFİR '+i));
  $('player0Name').textContent=game.players[0].name;$('player1Name').textContent=game.players[1].name;requestAnimationFrame(layoutArena);
  $('modePill').textContent=options.mode==='online'?'🌐 '+net.code+' • '+(['upgrades','chaos','cards','panic'].some(k=>game.rules[k]!==PRESETS[game.rules.preset][k])?'ÖZEL KURALLAR':({fusion:'HEPSİ BİR ARADA',evolution:'BOMBA EVRİMİ',party:'ÇILGIN KAOS',classic:'KLASİK'}[game.rules.preset]||'ÖZEL')):options.mode==='bot'?'🤖 '+({easy:'RAHAT',normal:'DENGELİ',hard:'ÇILGIN'}[options.difficulty]):'👥 AYNI KLAVYE';
  $('controlsHint').innerHTML=options.mode!=='local'?'<b>WASD</b> hareket · <b>SOL TIK</b> şarj/fırlat · <b>SPACE</b> atıl · <b>E</b> savun · <b>Q</b> kart':'<b>P1:</b> WASD, F atış, G atıl, H savun, R kart &nbsp; <b>P2:</b> oklar, L atış, K atıl, J savun, I kart';
  $('keyThrow').textContent=options.mode!=='local'?'SOL TIK':'F';$('keyDash').textContent=options.mode!=='local'?'SPACE':'G';$('keyParry').textContent=options.mode!=='local'?'E':'H';$('keyPower').textContent=options.mode!=='local'?'Q':'R';$('pauseBtn').classList.toggle('hidden',options.mode==='online');$('chatToggle').classList.toggle('hidden',options.mode!=='online');$('gameChatPanel').classList.toggle('hidden',options.mode!=='online');closeGameChat();renderChat();showChatTemporarily();
  const touchDevice=(navigator.maxTouchPoints>0||matchMedia('(pointer:coarse)').matches);if(touchDevice&&$('touchControls').parentElement!==$('gameScreen'))$('gameScreen').append($('touchControls'));$('touchControls').style.display=options.mode!=='local'&&touchDevice?'block':'none';if(options.mode!=='local'&&touchDevice){$('keyThrow').textContent='💣';$('keyDash').textContent='➚';$('keyParry').textContent='⛨';$('keyPower').textContent='✦';$('controlsHint').textContent='Sol joystick ile hareket • FIRLAT basılı tut/bırak • ATIL kaç • SAVUN karşıla • KART kullan';}
  if(SHOOTER_MODE)configureShooterUI();
- if(options.mode==='online'){net.focusPaused=false;net.guestHeardShots=0;startRound();game.phase='countdown';game.phaseTime=2.0;hideOverlay();updateHUD();return;}
+ if(options.mode==='online'){net.focusPaused=false;net.guestHeardShots=0;net.guestShotCounts=[];startRound();game.phase='countdown';game.phaseTime=2.0;hideOverlay();updateHUD();return;}
  if(SHOOTER_MODE){startRound();showOverlay('ARENA ÇATIŞMASI','🔫','SAVAŞA HAZIR MISIN?','Sol tık ile ateş et. WASD hareket, Space atıl, E kalkan, R yeniden doldur. Her eleme bir tur kazandırır!',[{label:'SAVAŞI BAŞLAT →',action:()=>{snd('ready');game.phase='countdown';game.phaseTime=1.8;hideOverlay()}}]);updateHUD();return;}
  startRound();showOverlay('MAÇ BAŞLIYOR','🎯','YENİ KURALLAR, YENİ KAOS','Atış tuşuna basılı tut, nişan al ve bırak. Gelen bombayı savunmayla geri sektir!', [{label:'HAZIRIM, BAŞLAT →',action:()=>{snd('ready');game.phase='countdown';game.phaseTime=3.2;hideOverlay()}}]);updateHUD()}
 
 // Shooter rules are exclusive to the isolated staging branch.
 // Preserve the existing arena coordinate system, host-authoritative networking,
 // WASD controls and circular player/obstacle collisions.
+function shooterWeapon(id){return WEAPONS[id]||WEAPONS.pistol;}
+function playerWeapon(p){return shooterWeapon(p.weapon);}
+function requiredPlayers(){return options.rules.battleMode==='duel'?2:4;}
 function configureShooterUI(){
  document.body.classList.add('shooter-mode');
  $('controlsHint').innerHTML=options.mode==='local'
@@ -139,7 +150,7 @@ function configureShooterUI(){
  $('keyParry').textContent=options.mode==='local'?'H':'E';
  $('keyPower').textContent=options.mode==='local'?'R':'R';
  $('modePill').textContent=options.mode==='online'?'🌐 '+net.code+' • SİLAHLI ARENA':options.mode==='bot'?'🤖 BOT ÇATIŞMASI':'👥 İKİ OYUNCU';
- $('roundLabel').textContent='TUR 1 / '+game.rules.rounds;
+ $('roundLabel').textContent=(game.rules.battleMode==='duel'?'TUR 1 / ':'HEDEF ')+game.rules.rounds;
  $('fuseLabel').textContent='RAUNT';
  $('timerIcon').textContent='🎯';
  $('timerDigits').textContent=String(game.rules.rounds);
