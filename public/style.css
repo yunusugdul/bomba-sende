@@ -185,3 +185,41 @@ body.is-playing .arena-chat-form button{padding:5px 6px}
 /* Three.js is rendered below the original transparent, pointer-sensitive HUD canvas. */
 .arena-shell > canvas#arena{position:relative;z-index:1;background:transparent;}
 .arena-shell > canvas.arena-webgl{position:absolute!important;inset:0;width:100%!important;height:100%!important;z-index:0;pointer-events:none;display:block;object-fit:fill;aspect-ratio:auto!important;}
+
+/* STAGING ONLY — Kaos Arena 3D shooter HUD. Existing arena geometry and layout retained. */
+body.shooter-mode .fuse-container { display:none!important; }
+body.shooter-mode .rules-editor > label[for="rulesPreset"],
+body.shooter-mode #rulesPreset,
+body.shooter-mode .rules-columns > label:nth-child(2),
+body.shooter-mode .rules-toggles,
+body.shooter-mode .persistence-field,
+body.shooter-mode .rules-summary {display:none!important;}
+body.shooter-mode .rules-editor{padding-top:16px;padding-bottom:15px;}
+body.shooter-mode .timerbox{min-width:148px;}
+body.shooter-mode .timer-main small{display:none;}
+body.shooter-mode .timer-main{gap:6px;}
+body.shooter-mode #timerDigits{color:#fff6b7;font-size:clamp(26px,3vw,43px);}
+body.shooter-mode .scorebox .profile-name{min-width:0;flex:1;}
+body.shooter-mode .shooter-hp-track {
+  height:10px;width:min(230px,88%);border-radius:999px;overflow:hidden;
+  margin-top:6px;background:rgba(9,14,31,.82);
+  border:1px solid rgba(225,233,255,.22);box-shadow:inset 0 2px 4px #0008;
+}
+body.shooter-mode .shooter-hp-track span {
+  display:block;width:100%;height:100%;border-radius:999px;
+  transition:width .13s linear;box-shadow:0 0 12px currentColor;
+  background:#d8ff52;
+}
+body.shooter-mode .scorebox.p1 .shooter-hp-track{margin-left:auto;}
+body.shooter-mode .scorebox.p1 .profile-name{text-align:right;}
+body.shooter-mode .bomb-status{color:#d8ff52;}
+body.shooter-mode .timer-meta{color:#dbe5fc;}
+body.shooter-mode .fuse-spark,body.shooter-mode .fuse-burning{display:none!important;}
+body.shooter-mode .arena-shell{border-color:#545174;box-shadow:0 16px 35px rgba(0,0,0,.30);}
+body.shooter-mode .preview-shot .shot-ball{font-size:25px;}
+body.shooter-mode .ability.special .meter span{background:linear-gradient(90deg,#79caff,#b49dff);}
+@media (max-width:760px) {
+  body.shooter-mode .shooter-hp-track{height:8px;width:94%;}
+  body.shooter-mode .scorebox{min-width:0;}
+  body.shooter-mode .timerbox{min-width:82px;}
+}
