@@ -15,9 +15,9 @@ export function createArena3D(inputCanvas) {
   const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.32;
+  renderer.toneMappingExposure = 1.48;
   const lowPower = matchMedia('(pointer:coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4;
-  const pixelRatio=Math.min(window.devicePixelRatio||1,lowPower?1.15:1.55);
+  const pixelRatio=Math.min(window.devicePixelRatio||1,lowPower?1.05:1.4);
   renderer.setPixelRatio(pixelRatio);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -28,11 +28,11 @@ export function createArena3D(inputCanvas) {
   scene.background = new THREE.Color('#0b0d20');
   scene.fog = new THREE.FogExp2('#0b0d20', .011);
   const camera = new THREE.OrthographicCamera(-22,22,12.4,-12.4,.1,170);
-  camera.position.set(0,33,25);
+  camera.position.set(0,30,35);
   camera.lookAt(0,0,0);
-  const hemi = new THREE.HemisphereLight('#d8eaff', '#241337', 2.3);
+  const hemi = new THREE.HemisphereLight('#f0f9ff', '#3a2c55', 2.65);
   scene.add(hemi);
-  const key = new THREE.DirectionalLight('#fff3df', 2.8);
+  const key = new THREE.DirectionalLight('#fff9e7', 3.05);
   key.position.set(-18,30,11);
   key.castShadow = true;
   key.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048);
@@ -42,19 +42,19 @@ export function createArena3D(inputCanvas) {
   key.shadow.bias = -.0003;
   key.shadow.normalBias = .018;
   scene.add(key);
-  const rim = new THREE.DirectionalLight('#9e81ff', 1.8);
+  const rim = new THREE.DirectionalLight('#b7a5ff', 1.9);
   rim.position.set(18,15,-12); scene.add(rim);
-  const fill = new THREE.DirectionalLight('#73b8ff',.85);
+  const fill = new THREE.DirectionalLight('#a0dfff',1.05);
   fill.position.set(10,8,17);scene.add(fill);
 
   const stage = new THREE.Group(); scene.add(stage);
   const effects = new THREE.Group(); scene.add(effects);
   let lastMap = null;
   let accent = '#a591ff';
-  const arenaFloor = mat('#18172c',{roughness:.82,metalness:.08});
+  const arenaFloor = mat('#456481',{roughness:.91,metalness:0});
   const linesMat = basic('#a997ff',{transparent:true,opacity:.12,depthWrite:false});
-  const wallBody = mat('#37314e',{metalness:.48,roughness:.32});
-  const platformMaterial = mat('#24243c',{metalness:.43,roughness:.61});
+  const wallBody = mat('#51466e',{metalness:.08,roughness:.6});
+  const platformMaterial = mat('#363454',{metalness:.1,roughness:.68});
   const geometries = {
     sphere:new THREE.SphereGeometry(1,16,12),
     sphereFine:new THREE.SphereGeometry(1,24,16),
@@ -93,12 +93,22 @@ export function createArena3D(inputCanvas) {
   }
   const detailKit=createArenaDetailKit(THREE,{stage,world,block,mesh,track,ring,geometries,lowPower});
   let stageDetail=null;
+  let currentQualityRatio=pixelRatio;
   function resetMap(map) {
     disposeGroup(stage);
     accent=map.glow; lastMap=map.name;
-    scene.background.set(map.floor).lerp(color('#050714'),.42);
+    const palette={
+      'NEON PARK':'#2d3262','BUZ LABİRENTİ':'#2d718e','PORTAL PARTİSİ':'#513668',
+      'SEK SEK':'#674663','SON ŞANS':'#2e6150'
+    };
+    scene.background.set(palette[map.name]||map.floor).lerp(color('#0b1422'),.36);
     scene.fog.color.copy(scene.background);
-    arenaFloor.color.set(map.floor);
+    arenaFloor.color.set(palette[map.name]||map.floor);
+    // Last Chance has the most expensive frozen floor feature. Keep a smaller back buffer
+    // and skip optional bloom for smooth, predictable input/animation frame times.
+    currentQualityRatio=map.name==='SON ŞANS'?Math.min(pixelRatio,lowPower?.85:1.05):pixelRatio;
+    renderer.setPixelRatio(currentQualityRatio);
+    composer?.setPixelRatio(currentQualityRatio);
     const deck=block(stage,0,-.46,0,42.4,.72,24.9,platformMaterial);
     deck.castShadow=false;
     block(stage,0,-.075,0,40.2,.12,22.6,arenaFloor).castShadow=false;
@@ -121,11 +131,8 @@ export function createArena3D(inputCanvas) {
     for (const b of map.blocks) {
       const cx=(b.x+b.w/2-500)/S, cz=(b.y+b.h/2-281)/S;
       const w=b.w/S,d=b.h/S;
-      block(stage,cx,.66,cz,w,1.38,d,wallBody);
-      block(stage,cx,1.38,cz,w*.87,.085,d*.87,mat('#8576ac',{metalness:.52,roughness:.31}));
-      block(stage,cx,1.44,cz,w*.76,.07,d*.76,mat(map.floor,{metalness:.5,roughness:.3}));
-      // Raised trims have the same footprint, no extra physical collision.
-      track(stage,cx,cz-d*.45,w*.75,.055,map.glow,1.48);
+      // Original collision footprint is retained; the detailed cartoon wall caps this core.
+      block(stage,cx,1.2,cz,w,2.4,d,wallBody);
     }
     for(const f of map.features) {
       const q=world(f.x,f.y,.065),radius=f.r/S;
@@ -140,9 +147,8 @@ export function createArena3D(inputCanvas) {
         const rim=ring(stage,'#ffdd87',radius*1.06);rim.position.set(q.x,.48,q.z);
         mesh(geometries.sphere,basic('#ffe4a3',{toneMapped:false}),stage,q.x,.54,q.z,[.25,.25,.25]);
       } else if(f.kind==='ice') {
-        const ice=mesh(geometries.cylinder,basic('#80dfff',{transparent:true,opacity:.16,depthWrite:false}),stage,q.x,.024,q.z,[radius,.013,radius]);
-        ice.castShadow=false;
-        const rr=ring(stage,'#80eeff',radius);rr.position.set(q.x,.075,q.z);rr.material.opacity=.65;
+        // An inexpensive ground decal, not a giant translucent 3D cylinder.
+        const rr=ring(stage,'#bdfbff',radius);rr.position.set(q.x,.04,q.z);rr.material.opacity=.5;
       }
     }
     // Subtle arena landmark at the centre, stays below the playing surface.
@@ -153,16 +159,16 @@ export function createArena3D(inputCanvas) {
   function makeHuman(hex,name,id) {
     const root = new THREE.Group(); scene.add(root);
     const model=new THREE.Group();root.add(model);
-    const suit=mat(id===0?'#d7ff58':'#ff81bc',{metalness:.18,roughness:.44});
-    const suitDark=mat(id===0?'#4c6531':'#71294b',{metalness:.38,roughness:.48});
-    const skin=mat(id===0?'#f4bf96':'#a97760',{roughness:.76,metalness:0});
+    const suit=mat(id===0?'#d7ff39':'#ff57ae',{metalness:.04,roughness:.50,emissive:id===0?'#526800':'#770c44',emissiveIntensity:.24});
+    const suitDark=mat(id===0?'#357043':'#95325d',{metalness:.09,roughness:.56});
+    const skin=mat(id===0?'#ecb58d':'#dba17e',{roughness:.85,metalness:0});
     const hair=mat(id===0?'#242136':'#30253a',{roughness:.87,metalness:0});
     const bright=basic(hex,{toneMapped:false});
     // Humanoid: head, torso, both arms and legs - all narrower than the original collision diameter.
     mesh(geometries.capsule,suit,model,0,1.34,0,[.96,1.08,.66]);
     block(model,0,1.17,.35,.72,.23,.12,suitDark);
-    mesh(geometries.sphere,skin,model,0,2.2,.03,[.35,.37,.35]);
-    mesh(geometries.sphere,hair,model,0,2.45,-.05,[.37,.18,.36]);
+    mesh(geometries.sphere,skin,model,0,2.20,.03,[.31,.32,.31]);
+    mesh(geometries.sphere,hair,model,0,2.43,-.05,[.33,.17,.32]);
     for(const side of [-1,1]) {
       mesh(geometries.sphere,hair,model,side*.15,2.23,.334,[.038,.043,.025]);
     }
@@ -181,14 +187,16 @@ export function createArena3D(inputCanvas) {
     emblem.castShadow=false;
     const shadow=mesh(new THREE.CircleGeometry(.95,24),basic('#000000',{transparent:true,opacity:.26,depthWrite:false}),root,0,.01,0);
     shadow.rotation.x=-Math.PI/2; shadow.castShadow=false;
-    const a=ring(root,hex,1.12);a.position.y=.07;a.material.opacity=.34;
+    const a=ring(root,hex,1.12);a.position.y=.07;a.material.opacity=.9;
+    const baseDisc=mesh(new THREE.CylinderGeometry(.98,.98,.10,24),basic(hex,{toneMapped:false}),root,0,.035,0);
+    baseDisc.castShadow=false;baseDisc.material.transparent=true;baseDisc.material.opacity=.30;
     const carry=ring(root,'#ffbd64',1.31);carry.position.y=.09;
     const defense=ring(root,'#72efff',1.55);defense.position.y=.17;
     const charge=ring(root,'#e3ff65',1.46);charge.position.y=.13;
     // High detail combat suit without changing the old 21px physical collision radius.
     const alloy=mat(id===0?'#293d3b':'#433048',{metalness:.68,roughness:.28});
     const trim=mat(id===0?'#c7ec52':'#ff87cc',{metalness:.48,roughness:.3,
-      emissive:id===0?'#344011':'#462039',emissiveIntensity:.5});
+      emissive:id===0?'#8da521':'#ad2a66',emissiveIntensity:1.05});
     block(model,0,1.47,.44,.78,.47,.17,alloy);
     block(model,0,1.50,.54,.43,.09,.057,trim);
     for(const side of [-1,1]) {
@@ -430,7 +438,7 @@ export function createArena3D(inputCanvas) {
     const now=performance.now(),dt=Math.min(.07,(now-lastFrame)/1000);lastFrame=now;
     // Camera shake only changes presentation, never the targeting plane or simulation.
     const cameraJitter=shake>0?.055*Math.min(6,shake):0;
-    camera.position.set(Math.sin(t*41)*cameraJitter,33,25+Math.cos(t*35)*cameraJitter);
+    camera.position.set(Math.sin(t*41)*cameraJitter,30,35+Math.cos(t*35)*cameraJitter);
     camera.lookAt(0,0,0);
     for(let i=0;i<2;i++)updateHuman(humans[i],g.players[i],g,t,dt);
     const bp=world(g.bomb.x,g.bomb.y,1.0+(g.bomb.mode==='flying'?.38:0));
@@ -484,7 +492,7 @@ export function createArena3D(inputCanvas) {
         guide.setColor(p.charge>.8?'#ff83c9':'#d8ff52');guide.visible=true;
       }
     }
-    if(composer)composer.render();else renderer.render(scene,camera);
+    if(composer&&g.map.name!=='SON ŞANS')composer.render();else renderer.render(scene,camera);
   }
   function dispose(){
     composer?.dispose();detailKit.dispose();renderer.dispose();renderer.domElement.remove();
