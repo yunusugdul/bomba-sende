@@ -17,10 +17,11 @@ const ROOM_TTL_MS = 2 * 60 * 1000;
 function newCode() { let id; do { id=Array.from(crypto.randomBytes(6),v=>CHARS[v%CHARS.length]).join(''); } while(rooms.has(id)); return id; }
 function token() { return crypto.randomBytes(24).toString('hex'); }
 const PRESETS={fusion:{upgrades:true,chaos:true,cards:true,panic:true},evolution:{upgrades:true,chaos:false,cards:true,panic:true},party:{upgrades:false,chaos:true,cards:true,panic:true},classic:{upgrades:false,chaos:false,cards:false,panic:false}};
-function validateRules(input){const v=input&&typeof input==='object'&&!Array.isArray(input)?input:{};const preset=Object.hasOwn(PRESETS,v.preset)?v.preset:'fusion';return {preset,arena:['cycle','random','0','1','2','3','4'].includes(String(v.arena))?String(v.arena):'cycle',rounds:[3,5,7].includes(Number(v.rounds))?Number(v.rounds):5,upgradePersistence:v.upgradePersistence==='round'?'round':'match',...Object.fromEntries(['upgrades','chaos','cards','panic'].map(k=>[k,typeof v[k]==='boolean'?v[k]:PRESETS[preset][k]]))};}
+function validateRules(input){const v=input&&typeof input==='object'&&!Array.isArray(input)?input:{};const preset=Object.hasOwn(PRESETS,v.preset)?v.preset:'fusion';return {battleMode:['duel','team','ffa'].includes(v.battleMode)?v.battleMode:'duel',preset,arena:['cycle','random','0','1','2','3','4'].includes(String(v.arena))?String(v.arena):'cycle',rounds:[3,5,7].includes(Number(v.rounds))?Number(v.rounds):5,upgradePersistence:v.upgradePersistence==='round'?'round':'match',...Object.fromEntries(['upgrades','chaos','cards','panic'].map(k=>[k,typeof v[k]==='boolean'?v[k]:PRESETS[preset][k]]))};}
 function safeName(raw){ return String(raw||'OYUNCU').replace(/[\x00-\x1f\x7f<>]/g,'').trim().slice(0,14)||'OYUNCU'; }
 function safeChat(raw){return typeof raw==='string'?raw.replace(/[\x00-\x1f\x7f\u202a-\u202e<>]/g,'').trim().slice(0,180):'';}
 function send(ws, data){ if(ws && !ws.closed) try { ws.send(JSON.stringify(data)); }catch{} }
+function roomCapacity(room){return room.rules.battleMode==='duel'?2:4;}
 function roster(room){ return room.members.map((m,i)=>({slot:i,name:m.name,online:!!m.ws&&!m.ws.closed})); }
 function presence(room){ const p={type:'presence',code:room.code,players:roster(room),started:room.started,matchId:room.matchId,rules:room.rules,hostPaused:!!room.hostPaused}; room.members.forEach(m=>send(m.ws,p)); }
 function cleanup(){ const now=Date.now(); for(const [id,room] of rooms) if(now-room.updated>ROOM_TTL_MS && room.members.every(m=>!m.ws||m.ws.closed)) rooms.delete(id); }
@@ -30,9 +31,12 @@ function leave(ws,explicit=false){
   const m=room.members[slot];
   if(m && m.ws===ws) {m.ws=null;room.updated=Date.now();if(slot===0&&room.started)room.hostPaused=true;}
   ws.room=null;ws.slot=null;
-  if(explicit && slot===0){room.members.forEach((x,i)=>{if(i===1){send(x.ws,{type:'closed',message:'Odayı kuran oyuncu ayrıldı.'});if(x.ws){x.ws.room=null;x.ws.slot=null;}}});rooms.delete(room.code);}
-  else if(explicit && slot===1){room.members.splice(1,1);room.started=false;presence(room);}
-  else presence(room);
+  if(explicit && slot===0){room.members.forEach((x,i)=>{if(i>0){send(x.ws,{type:'closed',message:'Odayı kuran oyuncu ayrıldı.'});if(x.ws){x.ws.room=null;x.ws.slot=null;}}});rooms.delete(room.code);}
+  else if(explicit && slot>0){
+    // Preserve stable player slots while a four-player match is in progress.
+    room.members[slot]={name:'Oyuncu bekleniyor',token:token(),ws:null};
+    room.started=false;presence(room);
+  }else presence(room);
 }
 function join(ws,room,slot,reconnected=false){
   if(ws.room) leave(ws,true);
@@ -55,14 +59,19 @@ function onMessage(ws,raw){
     // Rejoin must prove the secret resume token, never reclaim by nickname alone.
     const resume=room.members.findIndex(m=>m.token===d.token && typeof d.token==='string');
     if(resume!==-1){join(ws,room,resume,true);return;}
-    if(room.members.length>=2)return reject(ws,'Oda dolu. Bu maçta yalnızca iki oyuncu olabilir.');
-    room.members.push({name:safeName(d.name),token:token(),ws:null});join(ws,room,1);return;
+    if(room.started)return reject(ws,'Maç devam ediyor. Yeni oyuncular bir sonraki maça katılabilir.');
+    const slot=room.members.findIndex((m,i)=>i>0&&(!m.ws||m.ws.closed)&&m.name==='Oyuncu bekleniyor');
+    if(slot<0&&room.members.length>=roomCapacity(room))return reject(ws,'Oda dolu.');
+    const index=slot>=0?slot:room.members.length;
+    const member={name:safeName(d.name),token:token(),ws:null};
+    if(slot>=0)room.members[slot]=member;else room.members.push(member);
+    join(ws,room,index);return;
   }
   const room=ws.room; if(!room)return reject(ws,'Önce odaya katılmalısın.');
   room.updated=Date.now();
   if(d.type==='leave'){leave(ws,true);return;}
   if(d.type==='start'||d.type==='rematch'){
-    if(ws.slot!==0 || room.members.length!==2 || !room.members[1].ws)return reject(ws,'Maçı başlatmak için iki oyuncu da odada olmalı.');
+    if(ws.slot!==0 || room.members.length!==roomCapacity(room) || !room.members.every(m=>m.ws&&!m.ws.closed))return reject(ws,roomCapacity(room)+' oyuncu hazır olmadan maç başlatılamaz.');
     if(d.type==='start'&&room.started)return reject(ws,'Maç zaten başladı. Rövanş için rövanş komutunu kullan.');
     if(d.type==='rematch'&&!room.started)return reject(ws,'Önce ilk maçı başlatmalısın.');
     room.started=true;room.hostPaused=false;room.matchId++;room.lastSnapshotAt=0;
@@ -82,19 +91,19 @@ function onMessage(ws,raw){
   }
   if(d.type==='state'){
     if(ws.slot!==0||!room.started||d.matchId!==room.matchId||typeof d.state!=='object'||d.state===null||Array.isArray(d.state))return;
-    const state=d.state;if(!Array.isArray(state.players)||state.players.length!==2||!Array.isArray(state.score))return;
+    const state=d.state;if(!Array.isArray(state.players)||state.players.length!==roomCapacity(room)||!Array.isArray(state.score))return;
     const now=Date.now();if(room.lastSnapshotAt&&now-room.lastSnapshotAt<20)return;room.lastSnapshotAt=now;
-    send(room.members[1]?.ws,{type:'state',matchId:room.matchId,seq:Number.isFinite(d.seq)?d.seq:0,state});return;
+    room.members.slice(1).forEach(m=>send(m.ws,{type:'state',matchId:room.matchId,seq:Number.isFinite(d.seq)?d.seq:0,state}));return;
   }
-  if(d.type==='input'&&ws.slot===1&&room.started){
+  if(d.type==='input'&&ws.slot>0&&room.started){
     const num=n=>Number.isFinite(n)?Math.max(-1,Math.min(1,n)):0;
     const aim=n=>Number.isFinite(n)?Math.max(-1000,Math.min(1000,n)):0;
-    send(room.members[0].ws,{type:'input',x:num(d.x),y:num(d.y),aimX:aim(d.aimX),aimY:aim(d.aimY),aimActive:!!d.aimActive});return;
+    send(room.members[0].ws,{type:'input',slot:ws.slot,x:num(d.x),y:num(d.y),aimX:aim(d.aimX),aimY:aim(d.aimY),aimActive:!!d.aimActive});return;
   }
-  if(d.type==='upgrade'&&ws.slot===1&&room.started){if(typeof d.choice==='string'&&['rocket','magnet','bank','dash','parry'].includes(d.choice))send(room.members[0].ws,{type:'upgrade',choice:d.choice});return;}
-  if(d.type==='act'&&ws.slot===1&&room.started){
+  if(d.type==='upgrade'&&ws.slot>0&&room.started){if(typeof d.choice==='string'&&['rocket','magnet','bank','dash','parry'].includes(d.choice))send(room.members[0].ws,{type:'upgrade',choice:d.choice});return;}
+  if(d.type==='act'&&ws.slot>0&&room.started){
     if(!['charge_on','charge_off','dash','parry','card'].includes(d.action))return;
-    send(room.members[0].ws,{type:'act',action:d.action});return;
+    send(room.members[0].ws,{type:'act',slot:ws.slot,action:d.action});return;
   }
 }
 function wsFrame(op,payload){
