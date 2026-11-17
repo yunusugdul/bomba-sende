@@ -143,8 +143,14 @@ const server=http.createServer((req,res)=>{
   if(req.url==='/health'){res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({ok:true,rooms:rooms.size}));return;}
   let pathname;try{pathname=new URL(req.url,'http://localhost').pathname;}catch{res.writeHead(400).end();return;}
   if(pathname==='/')pathname='/index.html';
-  if(!['/index.html','/favicon.svg','/game.js','/style.css','/arena3d.js','/vendor/three.module.js','/vendor/three.core.js'].includes(pathname)){res.writeHead(404).end('Not found');return;}
-  const fp=pathname.startsWith('/vendor/')?path.join(__dirname,'node_modules','three','build',path.basename(pathname)):path.join(ROOT,pathname);fs.readFile(fp,(err,data)=>{if(err){res.writeHead(404).end('Not found');return;}res.writeHead(200,{'Content-Type':MIME[path.extname(fp)]||'application/octet-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);});
+  const pub=new Set(['/index.html','/favicon.svg','/game.js','/style.css','/arena3d.js','/arena3d-detail.js']);
+  // Allow only the renderer and its official local Three.js postprocess addons.
+  const threeBuild=/^\/vendor\/three\.(?:module|core)\.js$/.test(pathname);
+  const addon=/^\/vendor\/addons\/(?:postprocessing|shaders)\/[A-Za-z][A-Za-z0-9.-]*\.js$/.test(pathname);
+  if(!pub.has(pathname)&&!threeBuild&&!addon){res.writeHead(404).end('Not found');return;}
+  const fp=threeBuild?path.join(__dirname,'node_modules','three','build',path.basename(pathname)):
+    addon?path.join(__dirname,'node_modules','three','examples','jsm',pathname.slice('/vendor/addons/'.length)):
+    path.join(ROOT,pathname);fs.readFile(fp,(err,data)=>{if(err){res.writeHead(404).end('Not found');return;}res.writeHead(200,{'Content-Type':MIME[path.extname(fp)]||'application/octet-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);});
 });
 server.on('upgrade',upgrade);
 const cleaner=setInterval(cleanup,60000);cleaner.unref();
