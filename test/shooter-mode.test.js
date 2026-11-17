@@ -15,7 +15,7 @@ function extract(first,last){
  return gameJs.slice(a,b);
 }
 test('shooter mode is isolated to staging and preserves existing arena physics and online code',()=>{
- assert.match(gameJs,/const SHOOTER_MODE=true, SHOOTER_HP=100, SHOOTER_DAMAGE=20, SHOOTER_CLIP=16, SHOOTER_KILLS=10/);
+ assert.match(gameJs,/const SHOOTER_MODE=true, SHOOTER_HP=100, SHOOTER_DAMAGE=20, SHOOTER_CLIP=16/);
  assert.match(gameJs,/function circleRectResolve\(p,b\)/);
  assert.match(gameJs,/function blocked\(x,y,r\)/);
  assert.match(gameJs,/function onNetMessage\(d\)/);
@@ -32,10 +32,11 @@ test('shooter HUD is health, ammo and elimination-based with no fuse display',()
  assert.match(gameJs,/newGame\(\)/);
  assert.match(gameJs,/function updateShooterHUD\(/);
  assert.match(gameJs,/shooterHp/);
- assert.match(gameJs,/SHOOTER_KILLS/);
+ assert.match(gameJs,/function beginShooterRound\(\)/);
+ assert.match(gameJs,/g\.round>=g\.rules\.rounds/);
  assert.match(css,/body\.shooter-mode \.fuse-container \{ display:none!important/);
  assert.match(html,/SİLAH HAZIR/);
- assert.match(html,/SÜRESİZ/);
+ assert.match(html,/TUR SAYISI|SÜRESİZ/);
 });
 test('the 3D human carries a blaster and bullets are visible, the bomb is hidden',()=>{
  assert.match(three,/const gun=new THREE\.Group\(\)/);
@@ -47,7 +48,10 @@ test('the 3D human carries a blaster and bullets are visible, the bomb is hidden
  assert.match(three,/bomb\.visible=false/);
  assert.match(three,/o\.gun\.visible=!!g\.shooter/);
 });
-test('gunshots have synthesized audio and holding fire automatically reloads',()=>{
+test('recorded CC0 gunshot is decoded locally with a synthesized fallback',()=>{
+ assert.match(gameJs,/fetch\('\/audio\/pistol-fire\.wav'\)/);
+ assert.match(gameJs,/audio\.decodeAudioData\(bytes\.slice\(0\)\)/);
+ assert.match(gameJs,/if\(gunshotBuffer\)/);
  assert.match(gameJs,/if\(type==='shot'\)/);
  assert.match(gameJs,/audio\.createBuffer\(1,size,rate\)/);
  assert.match(gameJs,/source\.connect\(filter\)\.connect\(gain\)/);
@@ -102,5 +106,5 @@ test('a blocked hit causes no damage; fifth clear hit defeats player and scores'
  victim.shieldTime=0;
  for(let i=0;i<5;i++)hit(victim,0,850,281);
  assert.equal(victim.hp,0);assert.equal(victim.dead,true);
- assert.equal(victim.respawn,1.75);assert.equal(g.score[0],1);
+ assert.equal(victim.respawn,0);assert.equal(g.score[0],1);assert.equal(g.phase,'roundwin');assert.equal(g.roundWinner,0);
 });
