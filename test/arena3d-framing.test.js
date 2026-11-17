@@ -13,20 +13,19 @@ const obstacleGap=(a,b)=>{
  const dy=Math.max(0,a.y-b.y-b.h,b.y-a.y-a.h);
  return Math.hypot(dx,dy);
 };
-test('all five maps retain same arena coordinates and passable human/bomb corridors',()=>{
+test('classic five arena layout remains exactly as original Bomba Sende',()=>{
  assert.equal(maps.length,5);
  assert.match(game,/const W=1000,H=562,R=21/);
- for(const map of maps){
-   for(let i=0;i<map.blocks.length;i++){
-     const b=map.blocks[i];
-     assert.ok(b.x>=22&&b.y>=22&&b.x+b.w<=978&&b.y+b.h<=540,map.name+' obstacle bounds');
-     for(let j=i+1;j<map.blocks.length;j++){
-       const gap=obstacleGap(b,map.blocks[j]);
-       assert.ok(gap>=54,`${map.name} blocks ${i}/${j} gap ${gap} too narrow for 42px human`);
-     }
-   }
+ const expected=[
+  [[350,95,70,128],[581,337,70,128],[450,233,100,96]],
+  [[318,153,64,246],[616,153,64,246],[451,75,98,68],[451,422,98,65]],
+  [[383,112,65,145],[552,306,65,145],[451,242,98,78]],
+  [[260,200,110,65],[630,300,110,65],[465,60,70,95],[465,407,70,95]],
+  [[325,92,75,121],[600,350,75,121],[468,213,64,137]]
+ ];
+ for(let i=0;i<maps.length;i++){
+  assert.deepEqual(maps[i].blocks.map(v=>[v.x,v.y,v.w,v.h]),expected[i],maps[i].name);
  }
- assert.deepEqual(maps[0].blocks.map(({w,h})=>[w,h]),[[70,128],[70,128],[100,96]]);
  assert.equal(maps[2].features.filter(f=>f.kind==='portal').length,2);
 });
 test('isometric high-angle camera restores most of the original 2D arena area',()=>{
@@ -51,7 +50,8 @@ test('3D obstacles are truly extruded with separate bevelled material sides, wit
  assert.match(art,/new THREE\.ExtrudeGeometry\(shape/);
  assert.match(art,/roundedWall\(w,d,2\.68\)/);
  assert.match(art,/\[cap,body\]/);
- assert.match(view,/block\(stage,cx,1\.2,cz,w,2\.4,d,wallBody\)/);
+ assert.match(view,/function buildClassicMap\(map\)/);
+ assert.match(view,/if\(simple\)\{stageDetail=null;buildClassicMap\(map\);return;\}/);
  assert.match(art,/shadowAt\(x,z,w\+2,d\+2/);
  assert.doesNotMatch(view,/\.\_visual=/);
 });
