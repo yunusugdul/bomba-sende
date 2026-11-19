@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#070711" />
+  <meta name="description" content="NØVA — Tek kelimeden yaşayan bir evren yarat. İnteraktif kozmik sanat deneyimi." />
+  <meta property="og:title" content="NØVA — Kendi evrenini yarat" />
+  <meta property="og:description" content="Bir kelime yaz. Yeni bir evren doğsun." />
+  <title>NØVA — Kendi Evrenini Yarat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./app.js" defer></script>
+</head>
+<body>
+<div id="app">
+  <canvas id="universe" aria-hidden="true"></canvas>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="cursor-halo" id="cursor-halo" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="NØVA ana sayfa"><span class="brand-mark"><span></span><span></span><span></span><span></span></span>NØVA<span class="brand-dot">.</span></a>
+    <div class="header-center"><span class="signal-dot"></span> İNTERAKTİF DENEY <span class="header-number">/ 001</span></div>
+    <div class="header-actions"><span class="header-time" id="header-time">SİSTEM ÇEVRİMİÇİ</span><button class="header-sound" id="sound-top" type="button" aria-label="Sesi aç veya kapat" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="sound-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="sound-wave" d="M18.5 5.5a9 9 0 0 1 0 13"/></svg><span id="sound-top-label">SES KAPALI</span></button></div>
+  </header>
+
+  <main>
+    <section class="hero" id="home" aria-labelledby="hero-title">
+      <div class="hero-content">
+        <div class="eyebrow"><span class="eyebrow-line"></span><span>HAYAL GÜCÜNÜN BİR SONRAKİ FORMU</span></div>
+        <h1 id="hero-title">GERÇEKLİĞİ<br><em>BÜK<span class="period">.</span></em></h1>
+        <p class="hero-description">Bazı şeyler sadece izlenmez.<br><strong>Hissedilir.</strong> Bir kelime yaz ve sana ait, yaşayan bir evrenin kapısını arala.</p>
+        <form class="creation-form" id="creation-form" autocomplete="off">
+          <label for="universe-word" class="field-label">01 <span>/</span> EVRENİNİN İLK KELİMESİ</label>
+          <div class="input-wrap"><input type="text" id="universe-word" maxlength="36" placeholder="Örn. sonsuzluk, kaos, rüya..." aria-describedby="input-hint" spellcheck="false" /><button type="submit" id="generate-button" class="create-button" aria-label="Evreni oluştur"><span>EVRENİ YARAT</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h16m-7-7 7 7-7 7"/></svg></button></div>
+          <p class="input-hint" id="input-hint">NE YAZARSAN YAZ, HER SEFERİNDE BAŞKA BİR DÜNYA.</p>
+        </form>
+        <div class="suggestions"><span>İLHAM AL</span><div class="suggestion-list"><button type="button" data-word="Rüya">Rüya <span>↗</span></button><button type="button" data-word="Sonsuzluk">Sonsuzluk <span>↗</span></button><button type="button" data-word="Kaos">Kaos <span>↗</span></button><button type="button" data-word="Özgürlük">Özgürlük <span>↗</span></button></div></div>
+      </div>
+      <div class="universe-label universe-label-top" aria-hidden="true"><span>FIG. 01 — CANLI SİMÜLASYON</span><span class="record-indicator"><i></i> ACTIVE</span></div>
+      <div class="planet-target" id="planet-target" aria-label="Etkileşimli evren. Parçacıkları harekete geçirmek için tıkla veya dokun." role="img"><div class="target-top">BU EVREN YALNIZCA SANA AİT</div><div class="target-reticle"><span>+</span></div><div class="target-bottom"><span id="galaxy-title">NØVA / ORIGIN</span><span id="galaxy-coords">00.00° / ∞</span></div></div>
+      <div class="universe-label universe-label-bottom" aria-hidden="true"><span>PARÇACIKLAR GERÇEK ZAMANLI HAREKET EDİYOR</span><span>DRAG / EXPLORE ↗</span></div>
+      <a href="#lab" class="scroll-indicator"><span>KEŞFETMEK İÇİN KAYDIR</span><span class="scroll-line"></span><span>↓</span></a>
+      <div class="corner-index">N° 001 <span>—</span> BEYOND IMAGINATION</div>
+    </section>
+
+    <section class="control-section" id="lab" aria-labelledby="lab-title">
+      <div class="section-heading"><div><span class="overline">02 / KONTROL MERKEZİ</span><h2 id="lab-title">Evren senin.<br><i>Kurallar da.</i></h2></div><p>Bir kelime sadece başlangıç. Şimdi gerçekliği kendi zevkine göre yeniden şekillendir.</p></div>
+      <div class="control-grid">
+        <div class="control-card mood-card"><div class="card-top"><span>01 / ATMOSFER</span><span class="card-symbol">✳</span></div><h3>Nasıl hissettirsin?</h3><p>Bir ruh hali seç. Galaksinin bütün kimliği değişsin.</p><div class="mood-options" role="group" aria-label="Evren atmosferi"><button type="button" class="mood-chip active" data-mood="0" aria-pressed="true"><span class="mood-swatch" style="--swatch:#a58aff"></span>NEBULA</button><button type="button" class="mood-chip" data-mood="1" aria-pressed="false"><span class="mood-swatch" style="--swatch:#ffac79"></span>SOLAR</button><button type="button" class="mood-chip" data-mood="2" aria-pressed="false"><span class="mood-swatch" style="--swatch:#6cc9ff"></span>ABYSS</button><button type="button" class="mood-chip" data-mood="3" aria-pressed="false"><span class="mood-swatch" style="--swatch:#b1eb9a"></span>ZEN</button><button type="button" class="mood-chip" data-mood="4" aria-pressed="false"><span class="mood-swatch" style="--swatch:#ff69ba"></span>CHAOS</button></div></div>
+        <div class="control-card density-card"><div class="card-top"><span>02 / YOĞUNLUK</span><span class="card-symbol">⁂</span></div><h3>Kaç yıldız yeter?</h3><p>Kozmosu sakinleştir veya gökyüzünü sonsuzlukla doldur.</p><div class="range-header"><span>MİNİMAL</span><output id="density-output" for="density-slider">64%</output><span>SONSUZ</span></div><input id="density-slider" class="range-slider" type="range" min="15" max="100" value="64" aria-label="Yıldız yoğunluğu"/><div class="range-scale"><span>01</span><span>05</span><span>10</span></div></div>
+        <div class="control-card create-card"><div class="card-top"><span>03 / SON DOKUNUŞ</span><span class="card-symbol">✦</span></div><h3>Bu anı sakla.</h3><p>Oluşturduğun evreni bir sanat eserine dönüştür. Tamamen sana özel.</p><div class="export-actions"><button type="button" id="download-button" class="export-main"><span>POSTERİ İNDİR</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v12m-5-5 5 5 5-5M4 17v3h16v-3"/></svg></button><button type="button" id="share-button" class="export-secondary" title="Evren bağlantısını kopyala" aria-label="Evren bağlantısını kopyala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button></div></div>
+      </div>
+      <div class="telemetry"><div class="telemetry-item"><span class="telemetry-label">SİNYAL</span><span class="telemetry-value"><span class="signal-dot"></span> KARARLI</span></div><div class="telemetry-item"><span class="telemetry-label">EVREN KODU</span><span class="telemetry-value" id="universe-id">NV-000000</span></div><div class="telemetry-item"><span class="telemetry-label">YILDIZ SAYISI</span><span class="telemetry-value" id="star-count">000</span></div><div class="telemetry-item"><span class="telemetry-label">BOYUT</span><span class="telemetry-value">∞ / AKTİF</span></div><button type="button" id="surprise-button" class="surprise-button">BENİ ŞAŞIRT <span>↗</span></button></div>
+    </section>
+
+    <section class="end-section"><span class="overline">03 / HAYAL GÜCÜNÜN ÖTESİ</span><h2>Bir web sitesi mi?<br><em>Yoksa başka bir şey mi?</em></h2><p>Hiçbir video, hazır animasyon veya sabit görsel yok. Her yıldız, her ışık ve her hareket tarayıcında, senin için anlık olarak oluşuyor.</p><div class="keyboard-note"><span>KLAVYE KISAYOLLARI</span><span><kbd>SPACE</kbd> ENERJİ DALGASI</span><span><kbd>R</kbd> RASTGELE EVREN</span><span><kbd>M</kbd> SES</span><span><kbd>?</kbd> REHBER</span></div></section>
+  </main>
+
+  <footer class="site-footer"><span>NØVA<span class="brand-dot">.</span></span><span>BU EVRENDE İMKÂNSIZ YOK.</span><a href="#home">YUKARI DÖN ↑</a><span>© 2026 / MADE OF WONDER</span></footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="flash" class="flash" aria-hidden="true"></div>
+  <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title"><button type="button" id="help-close" class="help-close" aria-label="Pencereyi kapat">×</button><span class="overline">KULLANIM KILAVUZU / 001</span><h2 id="help-title">Evrenin kontrolü<br><em>sende.</em></h2><p>Gezegenin üzerine tıkla, fareyi hareket ettir veya ekrana dokun. Evren seni takip eder.</p><div class="help-keys"><div><kbd>SPACE</kbd><span>ENERJİ DALGASI</span></div><div><kbd>R</kbd><span>SÜRPRİZ EVREN</span></div><div><kbd>M</kbd><span>SESİ AÇ / KAPAT</span></div><div><kbd>S</kbd><span>POSTERİ KAYDET</span></div><div><kbd>?</kbd><span>BU REHBER</span></div></div><button type="button" id="help-go" class="help-go">ANLADIM, KEŞFEDELİM ↗</button></dialog>
+</div>
+</body>
+</html>
